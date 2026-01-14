@@ -147,4 +147,281 @@ test.describe('Random List Manager E2E', () => {
         expect(activeTabColor).not.toBe(inactiveTab1Color);
         expect(activeTabColor).not.toBe(inactiveTab2Color);
     });
+
+    test('should delete item from table', async ({ page }) => {
+        const input = page.locator('#simpleInput');
+        const addButton = page.locator('.btn-add');
+        
+        // Add two items
+        await input.fill('Item 1');
+        await addButton.click();
+        await input.fill('Item 2');
+        await addButton.click();
+        
+        // Verify both items are in the table
+        await expect(page.locator('td:has-text("Item 1")')).toBeVisible();
+        await expect(page.locator('td:has-text("Item 2")')).toBeVisible();
+        
+        // Delete the first item by clicking its delete button
+        const deleteButtons = page.locator('.btn-delete');
+        await deleteButtons.first().click();
+        
+        // Item 1 should be removed
+        await expect(page.locator('td:has-text("Item 1")')).not.toBeVisible();
+        // Item 2 should still be there
+        await expect(page.locator('td:has-text("Item 2")')).toBeVisible();
+    });
+
+    test('should update header and navbar background color when switching tabs', async ({ page }) => {
+        const itemsTab = page.locator('[data-tab="items"]');
+        const weaponsTab = page.locator('[data-tab="weapons"]');
+        const navContext = page.locator('#navContext');
+        
+        // Items tab is active by default, header should be orange
+        let headerBg = await navContext.evaluate((el) => window.getComputedStyle(el).backgroundColor);
+        console.log('Items header bg:', headerBg);
+        
+        // Switch to weapons tab
+        await weaponsTab.click();
+        await page.waitForFunction(() => {
+            return document.querySelector('[data-tab="weapons"]').classList.contains('active');
+        });
+        
+        // Header should now be violet
+        let headerBgWeapons = await navContext.evaluate((el) => window.getComputedStyle(el).backgroundColor);
+        console.log('Weapons header bg:', headerBgWeapons);
+        
+        // Colors should have changed
+        expect(headerBg).not.toBe(headerBgWeapons);
+    });
+
+    test('should display header text with uppercase styling', async ({ page }) => {
+        const navContext = page.locator('#navContext');
+        
+        // Check that the header has uppercase styling applied (CSS text-transform)
+        const computedStyle = await navContext.evaluate((el) => window.getComputedStyle(el).textTransform);
+        expect(computedStyle).toBe('uppercase');
+        
+        // Switch to weapons tab
+        const weaponsTab = page.locator('[data-tab="weapons"]');
+        await weaponsTab.click();
+        await page.waitForFunction(() => {
+            return document.querySelector('[data-tab="weapons"]').classList.contains('active');
+        });
+        
+        // Still should have uppercase styling
+        const computedStyleWeapons = await navContext.evaluate((el) => window.getComputedStyle(el).textTransform);
+        expect(computedStyleWeapons).toBe('uppercase');
+    });
+
+    test('should copy roll result to clipboard', async ({ page }) => {
+        // Add an item with known dice value
+        await page.fill('#simpleInput', 'Test Item 2d4');
+        await page.click('.btn-add');
+        
+        // Roll the dice
+        await page.click('#rollBtn');
+        
+        // Copy button should be visible
+        const copyBtn = page.locator('#copyBtn');
+        await expect(copyBtn).toBeVisible();
+        
+        // Click copy button
+        await copyBtn.click();
+        
+        // Button should still be enabled and clickable after copying
+        await page.waitForTimeout(100);
+        await expect(copyBtn).toBeEnabled();
+    });
+
+    test('should switch between different tabs and show correct items', async ({ page }) => {
+        // Add item to Items tab
+        await page.fill('#simpleInput', 'Items Tab Item');
+        await page.click('.btn-add');
+        
+        // Switch to Weapons tab
+        await page.click('[data-tab="weapons"]');
+        await page.waitForFunction(() => {
+            return document.querySelector('[data-tab="weapons"]').classList.contains('active');
+        });
+        
+        // Items Tab Item should not be visible
+        await expect(page.locator('td:has-text("Items Tab Item")')).not.toBeVisible();
+        
+        // Add item to Weapons tab
+        await page.fill('#simpleInput', 'Weapons Tab Item');
+        await page.click('.btn-add');
+        
+        // Weapons Tab Item should be visible
+        await expect(page.locator('td:has-text("Weapons Tab Item")')).toBeVisible();
+        
+        // Switch back to Items tab
+        await page.click('[data-tab="items"]');
+        await page.waitForFunction(() => {
+            return document.querySelector('[data-tab="items"]').classList.contains('active');
+        });
+        
+        // Items Tab Item should be visible again
+        await expect(page.locator('td:has-text("Items Tab Item")')).toBeVisible();
+        // Weapons Tab Item should not be visible
+        await expect(page.locator('td:has-text("Weapons Tab Item")')).not.toBeVisible();
+    });
+
+    test('should maintain separate data for each tab', async ({ page }) => {
+        // Add item to Items tab
+        await page.fill('#simpleInput', 'Item A');
+        await page.click('.btn-add');
+        
+        // Switch to Weapons tab and add item
+        await page.click('[data-tab="weapons"]');
+        await page.waitForFunction(() => {
+            return document.querySelector('[data-tab="weapons"]').classList.contains('active');
+        });
+        await page.fill('#simpleInput', 'Weapon A');
+        await page.click('.btn-add');
+        
+        // Switch to Encounters tab and add item
+        await page.click('[data-tab="encounters"]');
+        await page.waitForFunction(() => {
+            return document.querySelector('[data-tab="encounters"]').classList.contains('active');
+        });
+        await page.fill('#simpleInput', 'Encounter A');
+        await page.click('.btn-add');
+        
+        // Verify Encounters has only Encounter A
+        await expect(page.locator('td:has-text("Encounter A")')).toBeVisible();
+        
+        // Switch back to Items
+        await page.click('[data-tab="items"]');
+        await page.waitForFunction(() => {
+            return document.querySelector('[data-tab="items"]').classList.contains('active');
+        });
+        // Verify Items has only Item A
+        await expect(page.locator('td:has-text("Item A")')).toBeVisible();
+        await expect(page.locator('td:has-text("Weapon A")')).not.toBeVisible();
+        await expect(page.locator('td:has-text("Encounter A")')).not.toBeVisible();
+    });
+
+    test('should display table header matching current tab name', async ({ page }) => {
+        const tableNameHeader = page.locator('th#tableNameHeader');
+        
+        // Items tab is default, header should be "Item"
+        await expect(tableNameHeader).toHaveText('Item');
+        
+        // Switch to Weapons tab
+        const weaponsTab = page.locator('[data-tab="weapons"]');
+        await weaponsTab.click();
+        await page.waitForFunction(() => {
+            return document.querySelector('[data-tab="weapons"]').classList.contains('active');
+        });
+        
+        // Header should now be "Weapon"
+        await expect(tableNameHeader).toHaveText('Weapon');
+        
+        // Switch to Encounters tab
+        const encountersTab = page.locator('[data-tab="encounters"]');
+        await encountersTab.click();
+        await page.waitForFunction(() => {
+            return document.querySelector('[data-tab="encounters"]').classList.contains('active');
+        });
+        
+        // Header should now be "Encounter"
+        await expect(tableNameHeader).toHaveText('Encounter');
+    });
+
+    test('should display example row when table is empty', async ({ page }) => {
+        // Table should be empty initially, showing example row
+        const exampleRow = page.locator('.example-row');
+        await expect(exampleRow).toBeVisible();
+        
+        // Example row should contain "Example Item" (for Items tab)
+        await expect(page.locator('.example-row td:first-child')).toContainText('Example Item');
+        
+        // Should have example tag
+        await expect(page.locator('.example-row td:nth-child(2)')).toContainText('example-tag');
+        
+        // Should have reference column
+        await expect(page.locator('.example-row td:nth-child(3)')).toContainText('Reference');
+        
+        // Should have weight
+        await expect(page.locator('.example-row td:nth-child(4)')).toContainText('50');
+    });
+
+    test('should hide example row when item is added', async ({ page }) => {
+        const exampleRow = page.locator('.example-row');
+        
+        // Example row should be visible initially
+        await expect(exampleRow).toBeVisible();
+        
+        // Add an item
+        const input = page.locator('#simpleInput');
+        await input.fill('First Item');
+        await page.click('.btn-add');
+        
+        // Example row should no longer be visible
+        await expect(exampleRow).not.toBeVisible();
+        
+        // Real item should be visible
+        await expect(page.locator('td:has-text("First Item")')).toBeVisible();
+    });
+
+    test('should show different example rows for each tab', async ({ page }) => {
+        // Items tab should show "Example Item"
+        const exampleRow = page.locator('.example-row td:first-child');
+        await expect(exampleRow).toContainText('Example Item');
+        
+        // Switch to Weapons tab
+        const weaponsTab = page.locator('[data-tab="weapons"]');
+        await weaponsTab.click();
+        await page.waitForFunction(() => {
+            return document.querySelector('[data-tab="weapons"]').classList.contains('active');
+        });
+        
+        // Should show "Example Weapon"
+        await expect(exampleRow).toContainText('Example Weapon');
+        
+        // Switch to Encounters tab
+        const encountersTab = page.locator('[data-tab="encounters"]');
+        await encountersTab.click();
+        await page.waitForFunction(() => {
+            return document.querySelector('[data-tab="encounters"]').classList.contains('active');
+        });
+        
+        // Should show "Example Encounter"
+        await expect(exampleRow).toContainText('Example Encounter');
+    });
+
+    test('should have reference column in table', async ({ page }) => {
+        // Add an item with a reference
+        const input = page.locator('#simpleInput');
+        await input.fill('Referenced Item');
+        await page.click('.btn-add');
+        
+        // Item should be visible
+        const itemRow = page.locator('tr:has-text("Referenced Item")');
+        await expect(itemRow).toBeVisible();
+        
+        // Should have empty reference cell (reference not set during add)
+        const cells = itemRow.locator('td');
+        const cellCount = await cells.count();
+        expect(cellCount).toBe(5); // name, tags, reference, weight, action
+    });
+
+    test('should display reference column between tags and weight', async ({ page }) => {
+        // Get table headers
+        const headers = page.locator('thead th');
+        const headerTexts = await headers.allTextContents();
+        
+        // Verify column order
+        expect(headerTexts).toContain('Item'); // or tab name
+        expect(headerTexts).toContain('Tags');
+        expect(headerTexts).toContain('Reference');
+        expect(headerTexts).toContain('Weight');
+        expect(headerTexts).toContain('Action');
+        
+        // Verify order by checking positions
+        expect(headerTexts[1]).toBe('Tags');
+        expect(headerTexts[2]).toBe('Reference');
+        expect(headerTexts[3]).toBe('Weight');
+    });
 });

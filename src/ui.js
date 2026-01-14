@@ -59,11 +59,11 @@ export const UI = {
         
         // Update header and navbar background color to match tab color
         const colorMap = {
-            'items': 'var(--orange)',
-            'weapons': 'var(--violet)',
-            'encounters': 'var(--green)'
+            'items': '#cb4b16',      // orange
+            'weapons': '#6c71c4',    // violet
+            'encounters': '#859900'  // green
         };
-        const tabColor = colorMap[tab] || 'var(--cyan)';
+        const tabColor = colorMap[tab] || '#2aa198'; // cyan fallback
         navContext.style.backgroundColor = tabColor;
         navContext.style.color = 'white';
         
@@ -115,15 +115,34 @@ export const UI = {
     renderList() {
         const body = document.getElementById('tableBody');
         const filtered = this.getFilteredList();
+        const nameHeader = document.getElementById('tableNameHeader');
         
-        body.innerHTML = filtered.map((item, index) => `
-            <tr>
-                <td>${item.name}</td>
-                <td>${item.tags || ''}</td>
-                <td>${item.weight || 1}</td>
-                <td><button class="btn-delete" data-index="${index}">×</button></td>
-            </tr>
-        `).join('');
+        // Update header to reflect current tab
+        const tabLabel = currentTab.charAt(0).toUpperCase() + currentTab.slice(1).slice(0, -1); // Remove 's'
+        nameHeader.textContent = tabLabel;
+        
+        if (filtered.length === 0) {
+            // Show example row when table is empty
+            body.innerHTML = `
+                <tr class="example-row">
+                    <td>Example ${tabLabel}</td>
+                    <td>example-tag</td>
+                    <td>Reference</td>
+                    <td>50</td>
+                    <td><button class="btn-delete" disabled>×</button></td>
+                </tr>
+            `;
+        } else {
+            body.innerHTML = filtered.map((item, index) => `
+                <tr>
+                    <td>${item.name}</td>
+                    <td>${item.tags || ''}</td>
+                    <td>${item.reference || ''}</td>
+                    <td>${item.weight || 1}</td>
+                    <td><button class="btn-delete" data-index="${index}">×</button></td>
+                </tr>
+            `).join('');
+        }
 
         localStorage.setItem(STORAGE_KEY + currentTab, JSON.stringify(data[currentTab]));
     },
