@@ -95,8 +95,8 @@ test.describe('Random List Manager E2E', () => {
             await expect(page.locator('[data-tab="items"]')).toHaveCount(0);
             await expect(page.locator('.tab-btn:not(.new-tab-btn)')).toHaveCount(2);
         
-            // Should switch to first remaining tab (weapons)
-            await expect(page.locator('.tab-btn.active')).toHaveText('Weapons');
+            // Should switch to first remaining tab (encounters)
+            await expect(page.locator('.tab-btn.active')).toHaveText('Encounters');
         });
 
     test('should switch tabs and update context', async ({ page }) => {
@@ -104,7 +104,7 @@ test.describe('Random List Manager E2E', () => {
         await weaponTab.click();
         
         await expect(weaponTab).toHaveClass(/active/);
-        await expect(page.locator('.tab-btn.active')).toHaveText('Weapons');
+        await expect(page.locator('.tab-btn.active')).toHaveText('Improvised Weapons');
     });
 
     test('should add a new item and show it in the table', async ({ page }) => {
@@ -294,7 +294,7 @@ test.describe('Random List Manager E2E', () => {
         // Switch to weapons tab
         await weaponsTab.click();
         await expect(weaponsTab).toHaveClass(/active/);
-        await expect(weaponsTab).toHaveText('Weapons');
+        await expect(weaponsTab).toHaveText('Improvised Weapons');
     });
 
     test('should copy roll result to clipboard', async ({ page }) => {
@@ -392,8 +392,8 @@ test.describe('Random List Manager E2E', () => {
             return document.querySelector('[data-tab="weapons"]').classList.contains('active');
         });
         
-        // Header should now be "Weapon"
-        await expect(tableNameHeader).toHaveText('Weapon');
+        // Header should now be "Improvised Weapon"
+        await expect(tableNameHeader).toHaveText('Improvised Weapon');
         
         // Switch to Encounters tab
         const encountersTab = page.locator('[data-tab="encounters"]');
@@ -445,15 +445,15 @@ test.describe('Random List Manager E2E', () => {
         const exampleRow = page.locator('#tableBody .example-row td:first-child');
         await expect(exampleRow).toContainText('Example Item');
         
-        // Switch to Weapons tab
+        // Switch to Improvised Weapons tab
         const weaponsTab = page.locator('[data-tab="weapons"]');
         await weaponsTab.click();
         await page.waitForFunction(() => {
             return document.querySelector('[data-tab="weapons"]').classList.contains('active');
         });
         
-        // Should show "Example Weapon"
-        await expect(exampleRow).toContainText('Example Weapon');
+        // Should show "Example Improvised Weapon"
+        await expect(exampleRow).toContainText('Example Improvised Weapon');
         
         // Switch to Encounters tab
         const encountersTab = page.locator('[data-tab="encounters"]');

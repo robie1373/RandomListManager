@@ -4,6 +4,15 @@ import { DiceEngine } from './logic.js';
 const STORAGE_KEY = 'myList_v1.10.0_';
 const TABS_KEY = 'myList_tabs_v1.10.0';
 const ROLL_HISTORY_KEY = 'myList_rollHistory_v1.10.0_';
+
+// --- Import Validation Constants ---
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_FIELD_LENGTH = 500; // for name, tags, reference
+const MAX_TAB_NAME_LENGTH = 100;
+const WEIGHT_DEFAULT = 50;
+const REFERENCE_DEFAULT = 'TBD';
+const TAGS_DEFAULT = 'tbd';
+
 let currentTab = 'items';
 let filterLogic = 'OR';
 let selectedTags = new Set();
@@ -13,8 +22,8 @@ let pendingImport = null;
 // Initialize tabs structure
 let tabs = JSON.parse(localStorage.getItem(TABS_KEY)) || [
     { id: 'items', name: 'Items' },
-    { id: 'weapons', name: 'Weapons' },
-    { id: 'encounters', name: 'Encounters' }
+    { id: 'encounters', name: 'Encounters' },
+    { id: 'weapons', name: 'Improvised Weapons' }
 ];
 
 let data = {};
@@ -453,9 +462,16 @@ export const UI = {
 
     addItem() {
         const input = document.getElementById('simpleInput');
-        const itemName = input.value.trim();
+        let itemName = input.value.trim();
         
         if (!itemName) return;
+        
+        // Validate name length
+        itemName = this.sanitizeString(itemName, MAX_FIELD_LENGTH);
+        if (!itemName) {
+            this.showMessage('Name is invalid or too long (max 500 characters).');
+            return;
+        }
 
         if (!this.isNameUnique(itemName, currentTab)) {
             this.showMessage('Name must be unique in this tab.');
@@ -464,9 +480,9 @@ export const UI = {
         
         const newItem = {
             name: itemName,
-            tags: '',
-            weight: 1,
-            ref: ''
+            tags: TAGS_DEFAULT,
+            weight: WEIGHT_DEFAULT,
+            reference: REFERENCE_DEFAULT
         };
         
         data[currentTab].push(newItem);
@@ -777,9 +793,19 @@ export const UI = {
             
             let newValue = input.value.trim();
             
-            // Validate and constrain weight
+            // Validate field lengths and types
             if (fieldName === 'weight') {
-                newValue = Math.max(1, Math.min(100, parseInt(newValue) || 40));
+                newValue = this.sanitizeWeight(newValue);
+            } else if (fieldName === 'tags') {
+                newValue = this.sanitizeString(newValue, MAX_FIELD_LENGTH);
+                if (!newValue) newValue = TAGS_DEFAULT;
+                newValue = this.preventCSVInjection(newValue);
+            } else if (fieldName === 'reference') {
+                newValue = this.sanitizeString(newValue, MAX_FIELD_LENGTH);
+                if (!newValue) newValue = REFERENCE_DEFAULT;
+                newValue = this.preventCSVInjection(newValue);
+            } else if (fieldName === 'name') {
+                newValue = this.sanitizeString(newValue, MAX_FIELD_LENGTH);
             }
             
             if (isExampleRow) {
@@ -813,11 +839,13 @@ export const UI = {
                     }
                 });
                 
-                // Validate and set defaults
-                newItem.name = newItem.name || '';
-                newItem.tags = newItem.tags || '';
-                newItem.reference = newItem.reference || '';
-                newItem.weight = Math.max(1, Math.min(100, parseInt(newItem.weight) || 40));
+                // Validate and set defaults with proper validation
+                newItem.name = this.sanitizeString(newItem.name, MAX_FIELD_LENGTH) || '';
+                newItem.tags = this.sanitizeString(newItem.tags, MAX_FIELD_LENGTH) || TAGS_DEFAULT;
+                newItem.tags = this.preventCSVInjection(newItem.tags);
+                newItem.reference = this.sanitizeString(newItem.reference, MAX_FIELD_LENGTH) || REFERENCE_DEFAULT;
+                newItem.reference = this.preventCSVInjection(newItem.reference);
+                newItem.weight = this.sanitizeWeight(newItem.weight);
                 
                 // Only create item if name is not empty or example text
                 if (newItem.name && !newItem.name.includes('Example')) {
@@ -960,7 +988,15 @@ export const UI = {
             
             saveInProgress = true;
             
-            const newValue = input.value.trim();
+            let newValue = input.value.trim();
+            
+            // Validate field lengths for legend entries
+            if (fieldName === 'acronym') {
+                newValue = this.sanitizeString(newValue, MAX_FIELD_LENGTH);
+            } else if (fieldName === 'fullName') {
+                newValue = this.sanitizeString(newValue, MAX_FIELD_LENGTH);
+                newValue = this.preventCSVInjection(newValue);
+            }
             
             if (isExampleRow) {
                 // Create new legend entry from example row
@@ -987,6 +1023,11 @@ export const UI = {
                         newLegend[field] = value;
                     }
                 });
+                
+                // Validate legend entry with proper field validation
+                newLegend.acronym = this.sanitizeString(newLegend.acronym, MAX_FIELD_LENGTH) || '';
+                newLegend.fullName = this.sanitizeString(newLegend.fullName, MAX_FIELD_LENGTH) || '';
+                newLegend.fullName = this.preventCSVInjection(newLegend.fullName);
                 
                 // Only create entry if acronym is not empty or example text
                 if (newLegend.acronym && !newLegend.acronym.includes('DBR')) {
@@ -1221,16 +1262,88 @@ export const UI = {
         URL.revokeObjectURL(url);
     },
 
+    validateFileSize(file) {
+        if (file.size > MAX_FILE_SIZE) {
+            this.showMessage(`File size exceeds ${MAX_FILE_SIZE / 1024 / 1024}MB limit. Upload failed.`);
+            return false;
+        }
+        return true;
+    },
+
+    validateFileHeader(arrayBuffer, extension) {
+        // Check file signatures (magic bytes) to match claimed file type
+        const view = new Uint8Array(arrayBuffer);
+        if (extension === 'json') {
+            // JSON files typically start with { or [
+            const firstByte = view[0];
+            if (firstByte !== 123 && firstByte !== 91) { // { = 123, [ = 91
+                return false;
+            }
+        } else if (extension === 'xlsx') {
+            // XLSX is a ZIP file, starts with PK (0x50 0x4B)
+            if (view[0] !== 0x50 || view[1] !== 0x4B) {
+                return false;
+            }
+        } else if (extension === 'csv') {
+            // CSV can start with various characters, just ensure it's text-like
+            // Allow common BOM or text characters
+            const firstByte = view[0];
+            if (firstByte > 127 && firstByte !== 0xEF) { // Not ASCII or UTF-8 BOM
+                return false;
+            }
+        }
+        return true;
+    },
+
+    sanitizeString(value, maxLength) {
+        if (typeof value !== 'string') return '';
+        return value.trim().substring(0, maxLength);
+    },
+
+    sanitizeWeight(value) {
+        const parsed = parseInt(value, 10);
+        if (isNaN(parsed)) {
+            return WEIGHT_DEFAULT;
+        }
+        return Math.max(1, Math.min(100, parsed));
+    },
+
+    preventCSVInjection(value) {
+        // Prevent formula injection in CSV: =, +, -, @
+        if (typeof value !== 'string') return value;
+        const trimmed = value.trim();
+        if (/^[=+\-@]/.test(trimmed)) {
+            return "'" + trimmed; // Prefix with single quote to prevent interpretation
+        }
+        return value;
+    },
+
     async importData(file) {
         if (!file) return;
 
+        // Validate file size
+        if (!this.validateFileSize(file)) {
+            return;
+        }
+
         const extension = file.name.split('.').pop().toLowerCase();
         
+        // Validate file extension
+        if (!['json', 'csv', 'xlsx'].includes(extension)) {
+            this.showMessage('Unsupported file format. Use CSV, JSON, or XLSX.');
+            return;
+        }
+
         try {
             let importedItems = [];
             let importedLegends = [];
             
             if (extension === 'json') {
+                const arrayBuffer = await file.arrayBuffer();
+                if (!this.validateFileHeader(arrayBuffer, 'json')) {
+                    this.showMessage('Invalid JSON file format.');
+                    return;
+                }
                 const text = await file.text();
                 const parsed = JSON.parse(text);
                 // Handle both old format (array) and new format (object with items and legend)
@@ -1247,10 +1360,14 @@ export const UI = {
                 importedLegends = parsed.legend || [];
             } else if (extension === 'xlsx') {
                 if (typeof XLSX === 'undefined') {
-                    console.error('XLSX library not loaded.');
+                    this.showMessage('XLSX library not loaded. Please refresh the page.');
                     return;
                 }
                 const arrayBuffer = await file.arrayBuffer();
+                if (!this.validateFileHeader(arrayBuffer, 'xlsx')) {
+                    this.showMessage('Invalid XLSX file format.');
+                    return;
+                }
                 const workbook = XLSX.read(arrayBuffer, { type: 'array' });
                 
                 // Read Items sheet (or first sheet if no Items sheet)
@@ -1263,14 +1380,16 @@ export const UI = {
                     const legendSheet = workbook.Sheets['Legend'];
                     importedLegends = XLSX.utils.sheet_to_json(legendSheet);
                 }
-            } else {
-                console.error('Unsupported file format.');
+            }
+
+            if (importedItems.length === 0) {
+                this.showMessage('No data found in file. Check file format.');
                 return;
             }
 
             this.handleImportConflict(file.name, importedItems, importedLegends);
         } catch (error) {
-            console.error('Import error:', error);
+            this.showMessage('Import failed: ' + (error.message || 'Unknown error'));
         }
     },
 
@@ -1370,7 +1489,7 @@ export const UI = {
 
     handleImportConflict(filename, importedItems, importedLegends) {
         const baseName = filename.replace(/\.(json|csv|xlsx)$/i, '') || 'Imported Tab';
-        const normalizedName = baseName.trim();
+        const normalizedName = this.sanitizeString(baseName, MAX_TAB_NAME_LENGTH) || 'Imported Tab';
 
         const normalizedItems = this.normalizeImportedData(importedItems);
         const normalizedLegends = this.normalizeLegendData(importedLegends);
@@ -1402,14 +1521,18 @@ export const UI = {
         const seen = new Set();
         const result = [];
         importedLegends.forEach(legend => {
-            const acronym = (legend.acronym || '').trim();
+            let acronym = (legend.acronym || '').trim();
             if (!acronym) return;
+            acronym = this.sanitizeString(acronym, MAX_FIELD_LENGTH);
             const key = acronym.toLowerCase();
             if (seen.has(key)) return;
             seen.add(key);
+            let fullName = (legend.fullName || '').trim();
+            fullName = this.sanitizeString(fullName, MAX_FIELD_LENGTH);
+            fullName = this.preventCSVInjection(fullName);
             result.push({
                 acronym,
-                fullName: legend.fullName || ''
+                fullName
             });
         });
         return result;
@@ -1417,20 +1540,52 @@ export const UI = {
         
     normalizeImportedData(importedData) {
         if (!Array.isArray(importedData)) return [];
-        // Map to expected shape and enforce unique names
+        // Map to expected shape with strict validation and defaults
         const seen = new Set();
         const result = [];
         importedData.forEach(item => {
-            const name = (item.name || '').trim();
+            let name = (item.name || '').trim();
+            if (!name) return;
+            name = this.sanitizeString(name, MAX_FIELD_LENGTH);
             if (!name) return;
             const key = name.toLowerCase();
             if (seen.has(key)) return;
             seen.add(key);
+            
+            // Validate weight - must be integer 1-100, default to 50
+            const weight = this.sanitizeWeight(item.weight);
+            
+            // Validate reference - must be string, default to TBD
+            let reference = (item.reference || '').trim();
+            if (!reference) {
+                reference = REFERENCE_DEFAULT;
+            } else {
+                reference = this.sanitizeString(reference, MAX_FIELD_LENGTH);
+                if (!reference) {
+                    reference = REFERENCE_DEFAULT;
+                } else {
+                    reference = this.preventCSVInjection(reference);
+                }
+            }
+            
+            // Validate tags - must be string, default to tbd
+            let tags = (item.tags || '').trim();
+            if (!tags) {
+                tags = TAGS_DEFAULT;
+            } else {
+                tags = this.sanitizeString(tags, MAX_FIELD_LENGTH);
+                if (!tags) {
+                    tags = TAGS_DEFAULT;
+                } else {
+                    tags = this.preventCSVInjection(tags);
+                }
+            }
+            
             result.push({
                 name,
-                tags: item.tags || '',
-                reference: item.reference || '',
-                weight: Math.max(1, Math.min(100, parseInt(item.weight) || 1))
+                tags,
+                reference,
+                weight
             });
         });
         return result;
