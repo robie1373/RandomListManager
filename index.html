@@ -16,7 +16,7 @@
         </div>
         
         <!-- Input and Add Button -->
-        <div class="input-section">
+        <div class="input-section" style="display: none;">
             <input id="simpleInput" type="text" placeholder="Enter item name and dice (e.g., Potion 2d4)">
             <button class="btn-add">Add Item</button>
         </div>
@@ -27,6 +27,24 @@
             <button id="copyBtn" class="hidden">📋 Copy</button>
         </div>
         <button id="rollBtn" class="btn-random">🎲 Roll on Table</button>
+        
+        <!-- Tag Cloud -->
+        <div id="tagCloudContainer">
+            <div class="tag-cloud-header">
+                <span class="tag-cloud-title">Filter by Tags:</span>
+                <div class="tag-match-mode">
+                    <label>
+                        <input type="radio" name="tagMatchMode" value="OR" checked>
+                        <span>OR (any)</span>
+                    </label>
+                    <label>
+                        <input type="radio" name="tagMatchMode" value="AND">
+                        <span>AND (all)</span>
+                    </label>
+                </div>
+            </div>
+            <div id="tagCloud" class="tag-cloud"></div>
+        </div>
         
         <!-- Items Table -->
         <table>
@@ -42,6 +60,16 @@
             <tbody id="tableBody">
             </tbody>
         </table>
+        
+        <!-- Help Text -->
+        <div class="help-text">
+            <p><strong>Tag Filtering Tips:</strong></p>
+            <ul>
+                <li><strong>OR mode:</strong> Shows items that have ANY of the selected tags.</li>
+                <li><strong>AND mode:</strong> Shows items that have ALL of the selected tags.</li>
+                <li><strong>Pro tip:</strong> Use difficulty level tags (e.g., "easy", "medium", "hard") combined with AND logic to ensure roll results match your party's level. For example, select both "potion" AND "easy" to get only easy-difficulty potions.</li>
+            </ul>
+        </div>
     </div>
         
     <script type="module" src="src/ui.js"></script>

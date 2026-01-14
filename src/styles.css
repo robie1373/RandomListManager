@@ -254,3 +254,127 @@ td.editing {
     border-color: var(--orange);
     box-shadow: 0 0 5px rgba(203, 75, 22, 0.5);
 }
+
+/* Tag Cloud Styling */
+#tagCloudContainer {
+    margin: 20px 0;
+    padding: 15px;
+    background-color: var(--bg-card);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+}
+
+.tag-cloud-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.tag-cloud-title {
+    font-weight: bold;
+    color: var(--cyan);
+    font-size: 1.1rem;
+}
+
+.tag-match-mode {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.tag-match-mode label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+    padding: 5px 10px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.tag-match-mode label:hover {
+    background-color: rgba(42, 161, 152, 0.1);
+}
+
+.tag-match-mode input[type="radio"] {
+    cursor: pointer;
+}
+
+.tag-match-mode span {
+    font-size: 0.9rem;
+}
+
+.tag-cloud {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-height: 40px;
+    align-items: center;
+}
+
+.no-tags {
+    color: var(--base01);
+    font-style: italic;
+    font-size: 0.9rem;
+}
+
+.tag-btn {
+    padding: 6px 14px;
+    border: 2px solid var(--cyan);
+    background-color: var(--bg-body);
+    color: var(--cyan);
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.tag-btn:hover {
+    background-color: rgba(42, 161, 152, 0.2);
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(42, 161, 152, 0.3);
+}
+
+.tag-btn.selected {
+    background-color: var(--cyan);
+    color: var(--base03);
+    border-color: var(--cyan);
+    font-weight: 700;
+}
+
+.tag-btn.selected:hover {
+    background-color: var(--blue);
+    border-color: var(--blue);
+}
+
+/* Help Text Styling */
+.help-text {
+    margin: 30px 0 20px 0;
+    padding: 20px;
+    background-color: rgba(42, 161, 152, 0.1);
+    border-left: 4px solid var(--cyan);
+    border-radius: 4px;
+}
+
+.help-text p {
+    margin: 0 0 10px 0;
+    color: var(--text-main);
+}
+
+.help-text strong {
+    color: var(--cyan);
+}
+
+.help-text ul {
+    margin: 10px 0 0 20px;
+    padding: 0;
+}
+
+.help-text li {
+    margin: 8px 0;
+    line-height: 1.6;
+}

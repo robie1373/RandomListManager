@@ -2,6 +2,19 @@ import { test, expect } from '@playwright/test';
 
 const APP_URL = 'http://localhost:5500'; // Adjust to your local server port
 
+// Helper function to add an item via the example row
+async function addItemViaExampleRow(page, itemName) {
+    const exampleRow = page.locator('.example-row');
+    const nameCell = exampleRow.locator('td:first-child');
+    await nameCell.click();
+    const input = nameCell.locator('input');
+    await input.waitFor({ state: 'visible' });
+    await input.fill(itemName);
+    await input.press('Enter');
+    // Wait for the item to appear in the table
+    await expect(page.locator(`td:has-text("${itemName}")`)).toBeVisible();
+}
+
 test.describe('Random List Manager E2E', () => {
     
     test.beforeEach(async ({ page }) => {
@@ -22,11 +35,7 @@ test.describe('Random List Manager E2E', () => {
     });
 
     test('should add a new item and show it in the table', async ({ page }) => {
-        const input = page.locator('#simpleInput');
-        const addButton = page.locator('.btn-add');
-        
-        await input.fill('Masterwork Potion 2d4');
-        await addButton.click();
+        await addItemViaExampleRow(page, 'Masterwork Potion 2d4');
         
         const tableCell = page.locator('td:has-text("Masterwork Potion 2d4")');
         await expect(tableCell).toBeVisible();
@@ -34,8 +43,7 @@ test.describe('Random List Manager E2E', () => {
 
     test('should roll dice and display plain text result', async ({ page }) => {
         // Setup: Add a guaranteed item
-        await page.fill('#simpleInput', 'Fixed Gold 1d1+10');
-        await page.click('.btn-add');
+        await addItemViaExampleRow(page, 'Fixed Gold 1d1+10');
         
         // Action: Roll
         await page.click('#rollBtn');
@@ -50,15 +58,11 @@ test.describe('Random List Manager E2E', () => {
     });
 
     test('should persist data after page reload', async ({ page }) => {
-        const input = page.locator('#simpleInput');
-        const addButton = page.locator('.btn-add');
-        
         // Add item
-        await input.fill('Persistent Item');
-        await addButton.click();
+        await addItemViaExampleRow(page, 'Persistent Item');
         
-        // Wait for the item to appear in the table
-        const tableCell = page.locator('td:has-text("Persistent Item")');
+        // Wait for the item to appear in the table (excluding example row)
+        const tableCell = page.locator('tbody tr').first().locator('td:has-text("Persistent Item")');
         await expect(tableCell).toBeVisible();
         
         // Verify data is in localStorage before reload
@@ -149,27 +153,22 @@ test.describe('Random List Manager E2E', () => {
     });
 
     test('should delete item from table', async ({ page }) => {
-        const input = page.locator('#simpleInput');
-        const addButton = page.locator('.btn-add');
-        
         // Add two items
-        await input.fill('Item 1');
-        await addButton.click();
-        await input.fill('Item 2');
-        await addButton.click();
+        await addItemViaExampleRow(page, 'Item 1');
+        await addItemViaExampleRow(page, 'Item 2');
         
-        // Verify both items are in the table
-        await expect(page.locator('td:has-text("Item 1")')).toBeVisible();
-        await expect(page.locator('td:has-text("Item 2")')).toBeVisible();
+        // Verify both items are in the table (excluding example row)
+        await expect(page.locator('tbody tr:not(.example-row)').locator('td:has-text("Item 1")')).toBeVisible();
+        await expect(page.locator('tbody tr:not(.example-row)').locator('td:has-text("Item 2")')).toBeVisible();
         
-        // Delete the first item by clicking its delete button
-        const deleteButtons = page.locator('.btn-delete');
+        // Delete the first item by clicking its delete button (not the example row which has disabled button)
+        const deleteButtons = page.locator('.btn-delete').and(page.locator(':not([disabled])'));
         await deleteButtons.first().click();
         
         // Item 1 should be removed
-        await expect(page.locator('td:has-text("Item 1")')).not.toBeVisible();
+        await expect(page.locator('tbody tr:not(.example-row)').locator('td:has-text("Item 1")')).not.toBeVisible();
         // Item 2 should still be there
-        await expect(page.locator('td:has-text("Item 2")')).toBeVisible();
+        await expect(page.locator('tbody tr:not(.example-row)').locator('td:has-text("Item 2")')).toBeVisible();
     });
 
     test('should update header and navbar background color when switching tabs', async ({ page }) => {
@@ -216,8 +215,7 @@ test.describe('Random List Manager E2E', () => {
 
     test('should copy roll result to clipboard', async ({ page }) => {
         // Add an item with known dice value
-        await page.fill('#simpleInput', 'Test Item 2d4');
-        await page.click('.btn-add');
+        await addItemViaExampleRow(page, 'Test Item 2d4');
         
         // Roll the dice
         await page.click('#rollBtn');
@@ -236,8 +234,7 @@ test.describe('Random List Manager E2E', () => {
 
     test('should switch between different tabs and show correct items', async ({ page }) => {
         // Add item to Items tab
-        await page.fill('#simpleInput', 'Items Tab Item');
-        await page.click('.btn-add');
+        await addItemViaExampleRow(page, 'Items Tab Item');
         
         // Switch to Weapons tab
         await page.click('[data-tab="weapons"]');
@@ -249,8 +246,7 @@ test.describe('Random List Manager E2E', () => {
         await expect(page.locator('td:has-text("Items Tab Item")')).not.toBeVisible();
         
         // Add item to Weapons tab
-        await page.fill('#simpleInput', 'Weapons Tab Item');
-        await page.click('.btn-add');
+        await addItemViaExampleRow(page, 'Weapons Tab Item');
         
         // Weapons Tab Item should be visible
         await expect(page.locator('td:has-text("Weapons Tab Item")')).toBeVisible();
@@ -262,31 +258,28 @@ test.describe('Random List Manager E2E', () => {
         });
         
         // Items Tab Item should be visible again
-        await expect(page.locator('td:has-text("Items Tab Item")')).toBeVisible();
+        await expect(page.locator('tbody tr:not(.example-row)').locator('td:has-text("Items Tab Item")')).toBeVisible();
         // Weapons Tab Item should not be visible
-        await expect(page.locator('td:has-text("Weapons Tab Item")')).not.toBeVisible();
+        await expect(page.locator('tbody tr:not(.example-row)').locator('td:has-text("Weapons Tab Item")')).not.toBeVisible();
     });
 
     test('should maintain separate data for each tab', async ({ page }) => {
         // Add item to Items tab
-        await page.fill('#simpleInput', 'Item A');
-        await page.click('.btn-add');
+        await addItemViaExampleRow(page, 'Item A');
         
         // Switch to Weapons tab and add item
         await page.click('[data-tab="weapons"]');
         await page.waitForFunction(() => {
             return document.querySelector('[data-tab="weapons"]').classList.contains('active');
         });
-        await page.fill('#simpleInput', 'Weapon A');
-        await page.click('.btn-add');
+        await addItemViaExampleRow(page, 'Weapon A');
         
         // Switch to Encounters tab and add item
         await page.click('[data-tab="encounters"]');
         await page.waitForFunction(() => {
             return document.querySelector('[data-tab="encounters"]').classList.contains('active');
         });
-        await page.fill('#simpleInput', 'Encounter A');
-        await page.click('.btn-add');
+        await addItemViaExampleRow(page, 'Encounter A');
         
         // Verify Encounters has only Encounter A
         await expect(page.locator('td:has-text("Encounter A")')).toBeVisible();
@@ -297,8 +290,8 @@ test.describe('Random List Manager E2E', () => {
             return document.querySelector('[data-tab="items"]').classList.contains('active');
         });
         // Verify Items has only Item A
-        await expect(page.locator('td:has-text("Item A")')).toBeVisible();
-        await expect(page.locator('td:has-text("Weapon A")')).not.toBeVisible();
+        await expect(page.locator('tbody tr:not(.example-row)').locator('td:has-text("Item A")')).toBeVisible();
+        await expect(page.locator('tbody tr:not(.example-row)').locator('td:has-text("Weapon A")')).not.toBeVisible();
         await expect(page.locator('td:has-text("Encounter A")')).not.toBeVisible();
     });
 
@@ -353,13 +346,11 @@ test.describe('Random List Manager E2E', () => {
         // Example row should be visible initially
         await expect(exampleRow).toBeVisible();
         
-        // Add an item
-        const input = page.locator('#simpleInput');
-        await input.fill('First Item');
-        await page.click('.btn-add');
+        // Add an item using the example row
+        await addItemViaExampleRow(page, 'First Item');
         
-        // Example row should no longer be visible
-        await expect(exampleRow).not.toBeVisible();
+        // Example row should still be visible (always shown now)
+        await expect(exampleRow).toBeVisible();
         
         // Real item should be visible
         await expect(page.locator('td:has-text("First Item")')).toBeVisible();
@@ -392,10 +383,8 @@ test.describe('Random List Manager E2E', () => {
     });
 
     test('should have reference column in table', async ({ page }) => {
-        // Add an item with a reference
-        const input = page.locator('#simpleInput');
-        await input.fill('Referenced Item');
-        await page.click('.btn-add');
+        // Add an item with a reference using the example row
+        await addItemViaExampleRow(page, 'Referenced Item');
         
         // Item should be visible
         const itemRow = page.locator('tr:has-text("Referenced Item")');
@@ -426,13 +415,12 @@ test.describe('Random List Manager E2E', () => {
     });
 
     test('should edit item name in table', async ({ page }) => {
-        // Add an item
-        const input = page.locator('#simpleInput');
-        await input.fill('Original Name');
-        await page.click('.btn-add');
+        // Add an item using the example row
+        await addItemViaExampleRow(page, 'Original Name');
         
-        // Click on the name cell to edit
-        const nameCell = page.locator('td:first-child');
+        // Click on the name cell to edit (first non-example row)
+        const row = page.locator('tbody tr:not(.example-row)').first();
+        const nameCell = row.locator('td:first-child');
         await nameCell.click();
         
         // Should see an input field
@@ -448,13 +436,11 @@ test.describe('Random List Manager E2E', () => {
     });
 
     test('should edit item tags in table', async ({ page }) => {
-        // Add an item
-        const input = page.locator('#simpleInput');
-        await input.fill('Test Item');
-        await page.click('.btn-add');
+        // Add an item using the example row
+        await addItemViaExampleRow(page, 'Test Item');
         
-        // Click on the tags cell (second column)
-        const row = page.locator('tbody tr').first();
+        // Click on the tags cell (second column) - target first non-example row
+        const row = page.locator('tbody tr:not(.example-row)').first();
         const tagsCell = row.locator('td:nth-child(2)');
         await tagsCell.click();
         
@@ -468,13 +454,11 @@ test.describe('Random List Manager E2E', () => {
     });
 
     test('should edit item reference in table', async ({ page }) => {
-        // Add an item
-        const input = page.locator('#simpleInput');
-        await input.fill('Referenced Item');
-        await page.click('.btn-add');
+        // Add an item using the example row
+        await addItemViaExampleRow(page, 'Referenced Item');
         
-        // Click on the reference cell (third column)
-        const row = page.locator('tbody tr').first();
+        // Click on the reference cell (third column) - target first non-example row
+        const row = page.locator('tbody tr:not(.example-row)').first();
         const refCell = row.locator('td:nth-child(3)');
         await refCell.click();
         
@@ -488,13 +472,11 @@ test.describe('Random List Manager E2E', () => {
     });
 
     test('should edit item weight in table with constraints', async ({ page }) => {
-        // Add an item
-        const input = page.locator('#simpleInput');
-        await input.fill('Heavy Item');
-        await page.click('.btn-add');
+        // Add an item using the example row
+        await addItemViaExampleRow(page, 'Heavy Item');
         
-        // Click on the weight cell (fourth column)
-        const row = page.locator('tbody tr').first();
+        // Click on the weight cell (fourth column) - target first non-example row
+        const row = page.locator('tbody tr:not(.example-row)').first();
         const weightCell = row.locator('td:nth-child(4)');
         await weightCell.click();
         
@@ -508,20 +490,18 @@ test.describe('Random List Manager E2E', () => {
     });
 
     test('should persist edited data after page reload', async ({ page }) => {
-        // Add an item
-        const input = page.locator('#simpleInput');
-        await input.fill('Test Item');
-        await page.click('.btn-add');
+        // Add an item using the example row
+        await addItemViaExampleRow(page, 'Test Item');
         
-        // Edit the name
-        const nameCell = page.locator('td:first-child');
+        // Edit the name - target first non-example row
+        const row = page.locator('tbody tr:not(.example-row)').first();
+        const nameCell = row.locator('td:first-child');
         await nameCell.click();
         const cellInput = nameCell.locator('input');
         await cellInput.fill('Persisted Item');
         await cellInput.press('Enter');
         
         // Edit the tags
-        const row = page.locator('tbody tr').first();
         const tagsCell = row.locator('td:nth-child(2)');
         await tagsCell.click();
         const tagsInput = tagsCell.locator('input');
@@ -533,18 +513,17 @@ test.describe('Random List Manager E2E', () => {
         
         // Changes should persist
         await expect(page.locator('td:has-text("Persisted Item")')).toBeVisible();
-        const reloadedRow = page.locator('tbody tr').first();
+        const reloadedRow = page.locator('tbody tr:not(.example-row)').first();
         await expect(reloadedRow.locator('td:nth-child(2)')).toContainText('persistent');
     });
 
     test('should cancel edit with Escape key', async ({ page }) => {
-        // Add an item
-        const input = page.locator('#simpleInput');
-        await input.fill('Original');
-        await page.click('.btn-add');
+        // Add an item using the example row
+        await addItemViaExampleRow(page, 'Original');
         
-        // Click to edit
-        const nameCell = page.locator('td:first-child');
+        // Click to edit - target first non-example row
+        const row = page.locator('tbody tr:not(.example-row)').first();
+        const nameCell = row.locator('td:first-child');
         await nameCell.click();
         
         // Type something but press Escape
@@ -560,13 +539,12 @@ test.describe('Random List Manager E2E', () => {
     });
 
     test('should save edit on blur', async ({ page }) => {
-        // Add an item
-        const input = page.locator('#simpleInput');
-        await input.fill('Blur Test');
-        await page.click('.btn-add');
+        // Add an item using the example row
+        await addItemViaExampleRow(page, 'Blur Test');
         
-        // Click to edit and type
-        const nameCell = page.locator('td:first-child');
+        // Click to edit and type - target first non-example row
+        const row = page.locator('tbody tr:not(.example-row)').first();
+        const nameCell = row.locator('td:first-child');
         await nameCell.click();
         const cellInput = nameCell.locator('input');
         await cellInput.fill('Blur Saved');
@@ -579,18 +557,16 @@ test.describe('Random List Manager E2E', () => {
     });
 
     test('should have editable class on table cells', async ({ page }) => {
-        // Add an item
-        const input = page.locator('#simpleInput');
-        await input.fill('Editable Test');
-        await page.click('.btn-add');
+        // Add an item using the example row
+        await addItemViaExampleRow(page, 'Editable Test');
         
-        // Check that cells have editable class
-        const nameCell = page.locator('td:first-child');
+        // Check that cells have editable class - target first non-example row
+        const row = page.locator('tbody tr:not(.example-row)').first();
+        const nameCell = row.locator('td:first-child');
         const hasEditableClass = await nameCell.evaluate((el) => el.classList.contains('editable'));
         expect(hasEditableClass).toBe(true);
         
         // Check that action cell (delete button) doesn't have editable class
-        const row = page.locator('tbody tr').first();
         const actionCell = row.locator('td:last-child');
         const hasActionEditableClass = await actionCell.evaluate((el) => el.classList.contains('editable'));
         expect(hasActionEditableClass).toBe(false);
@@ -614,8 +590,8 @@ test.describe('Random List Manager E2E', () => {
         // Item should be created and visible
         await expect(page.locator('td:has-text("Potion of Healing")')).toBeVisible();
         
-        // Example row should no longer be visible
-        await expect(exampleRow).not.toBeVisible();
+        // Example row should still be visible (always shown now)
+        await expect(exampleRow).toBeVisible();
     });
 
     test('should create item with tags from example row', async ({ page }) => {
@@ -741,10 +717,8 @@ test.describe('Random List Manager E2E', () => {
     });
 
     test('should navigate to next cell with Tab key', async ({ page }) => {
-        // Add an item first
-        const input = page.locator('#simpleInput');
-        await input.fill('Sword');
-        await page.locator('.btn-add').click();
+        // Add an item using the example row
+        await addItemViaExampleRow(page, 'Sword');
         
         // Wait for item to be added
         await expect(page.locator('td:has-text("Sword")')).toBeVisible();
@@ -777,10 +751,8 @@ test.describe('Random List Manager E2E', () => {
     });
 
     test('should navigate to previous cell with Shift+Tab', async ({ page }) => {
-        // Add an item first
-        const input = page.locator('#simpleInput');
-        await input.fill('Dagger');
-        await page.locator('.btn-add').click();
+        // Add an item using the example row
+        await addItemViaExampleRow(page, 'Dagger');
         
         // Wait for item to be added
         await expect(page.locator('td:has-text("Dagger")')).toBeVisible();
@@ -813,10 +785,8 @@ test.describe('Random List Manager E2E', () => {
     });
 
     test('should navigate multiple cells with Tab', async ({ page }) => {
-        // Add an item first
-        const input = page.locator('#simpleInput');
-        await input.fill('Shield');
-        await page.locator('.btn-add').click();
+        // Add an item using the example row
+        await addItemViaExampleRow(page, 'Shield');
         
         // Wait for item to be added
         await expect(page.locator('td:has-text("Shield")')).toBeVisible();

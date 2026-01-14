@@ -53,6 +53,14 @@ export const UI = {
                 this.editCell(e.target, row);
             }
         });
+        
+        // Tag match mode change
+        document.querySelectorAll('input[name="tagMatchMode"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                filterLogic = e.target.value;
+                this.renderList();
+            });
+        });
     },
 
     switchTab(tab) {
@@ -87,8 +95,51 @@ export const UI = {
     },
 
     renderTagCloud() {
-        // Placeholder for tag cloud functionality
-        // This would render a cloud of tags for filtering
+        const tagCloudEl = document.getElementById('tagCloud');
+        if (!tagCloudEl) return;
+        
+        // Extract all unique tags from current tab's data
+        const allTags = new Set();
+        data[currentTab].forEach(item => {
+            if (item.tags) {
+                const tags = item.tags.split(',').map(t => t.trim()).filter(t => t);
+                tags.forEach(tag => allTags.add(tag));
+            }
+        });
+        
+        // Clear existing tags
+        tagCloudEl.innerHTML = '';
+        
+        if (allTags.size === 0) {
+            tagCloudEl.innerHTML = '<span class="no-tags">No tags available. Add tags to items to enable filtering.</span>';
+            return;
+        }
+        
+        // Create tag buttons
+        const sortedTags = Array.from(allTags).sort();
+        sortedTags.forEach(tag => {
+            const tagBtn = document.createElement('button');
+            tagBtn.className = 'tag-btn';
+            tagBtn.textContent = tag;
+            tagBtn.dataset.tag = tag;
+            
+            if (selectedTags.has(tag)) {
+                tagBtn.classList.add('selected');
+            }
+            
+            tagBtn.addEventListener('click', () => this.toggleTag(tag));
+            tagCloudEl.appendChild(tagBtn);
+        });
+    },
+    
+    toggleTag(tag) {
+        if (selectedTags.has(tag)) {
+            selectedTags.delete(tag);
+        } else {
+            selectedTags.add(tag);
+        }
+        this.renderTagCloud();
+        this.renderList();
     },
 
     handleRoll() {
@@ -130,28 +181,28 @@ export const UI = {
         const tabLabel = currentTab.charAt(0).toUpperCase() + currentTab.slice(1).slice(0, -1); // Remove 's'
         nameHeader.textContent = tabLabel;
         
-        if (filtered.length === 0) {
-            // Show example row when table is empty
-            body.innerHTML = `
-                <tr class="example-row">
-                    <td class="editable" data-field="name">Example ${tabLabel}</td>
-                    <td class="editable" data-field="tags">example-tag</td>
-                    <td class="editable" data-field="reference">Reference</td>
-                    <td class="editable" data-field="weight">50</td>
-                    <td><button class="btn-delete" disabled>×</button></td>
-                </tr>
-            `;
-        } else {
-            body.innerHTML = filtered.map((item, index) => `
-                <tr data-item-index="${index}">
-                    <td class="editable" data-field="name">${item.name}</td>
-                    <td class="editable" data-field="tags">${item.tags || ''}</td>
-                    <td class="editable" data-field="reference">${item.reference || ''}</td>
-                    <td class="editable" data-field="weight">${item.weight || 1}</td>
-                    <td><button class="btn-delete" data-index="${index}">×</button></td>
-                </tr>
-            `).join('');
-        }
+        // Always show example row at the bottom
+        const itemsHTML = filtered.map((item, index) => `
+            <tr data-item-index="${index}">
+                <td class="editable" data-field="name">${item.name}</td>
+                <td class="editable" data-field="tags">${item.tags || ''}</td>
+                <td class="editable" data-field="reference">${item.reference || ''}</td>
+                <td class="editable" data-field="weight">${item.weight || 1}</td>
+                <td><button class="btn-delete" data-index="${index}">×</button></td>
+            </tr>
+        `).join('');
+        
+        const exampleRowHTML = `
+            <tr class="example-row">
+                <td class="editable" data-field="name">Example ${tabLabel}</td>
+                <td class="editable" data-field="tags">example-tag</td>
+                <td class="editable" data-field="reference">Reference</td>
+                <td class="editable" data-field="weight">50</td>
+                <td><button class="btn-delete" disabled>×</button></td>
+            </tr>
+        `;
+        
+        body.innerHTML = itemsHTML + exampleRowHTML;
 
         localStorage.setItem(STORAGE_KEY + currentTab, JSON.stringify(data[currentTab]));
     },
@@ -181,6 +232,7 @@ export const UI = {
             const actualIndex = data[currentTab].indexOf(itemToDelete);
             if (actualIndex > -1) {
                 data[currentTab].splice(actualIndex, 1);
+                this.renderTagCloud();
                 this.renderList();
             }
         }
@@ -228,6 +280,39 @@ export const UI = {
             input.max = '100';
         }
         
+        // Add autocomplete for tags field
+        if (fieldName === 'tags') {
+            const datalistId = 'tags-datalist-' + Date.now();\n            input.setAttribute('list', datalistId);
+            
+            const datalist = document.createElement('datalist');
+            datalist.id = datalistId;
+            
+            // Get all unique tags from current tab
+            const allTags = new Set();
+            data[currentTab].forEach(item => {
+                if (item.tags) {
+                    const tags = item.tags.split(',').map(t => t.trim()).filter(t => t);
+                    tags.forEach(tag => allTags.add(tag));
+                }
+            });
+            
+            // Create options for each tag
+            Array.from(allTags).sort().forEach(tag => {
+                const option = document.createElement('option');
+                option.value = tag;
+                datalist.appendChild(option);
+            });
+            
+            document.body.appendChild(datalist);
+            
+            // Clean up datalist when input is removed
+            const originalRemove = input.remove.bind(input);
+            input.remove = () => {
+                datalist.remove();
+                originalRemove();
+            };
+        }
+        
         // Replace cell content with input
         cell.classList.add('editing');
         cell.innerHTML = '';
@@ -236,11 +321,15 @@ export const UI = {
         input.select();
         
         let escapePressed = false;
+        let saveInProgress = false;
         
         // Save on blur or Enter
         const saveEdit = () => {
             if (input.parentElement !== cell) return; // Already removed
             if (escapePressed) return; // Don't save if escape was pressed
+            if (saveInProgress) return; // Prevent double-save
+            
+            saveInProgress = true;
             
             let newValue = input.value.trim();
             
@@ -290,6 +379,7 @@ export const UI = {
                 if (newItem.name && !newItem.name.includes('Example')) {
                     data[currentTab].push(newItem);
                     localStorage.setItem(STORAGE_KEY + currentTab, JSON.stringify(data[currentTab]));
+                    this.renderTagCloud();
                     this.renderList();
                     return;
                 } else {
@@ -311,6 +401,11 @@ export const UI = {
                 
                 // Save to localStorage
                 localStorage.setItem(STORAGE_KEY + currentTab, JSON.stringify(data[currentTab]));
+                
+                // Update tag cloud if tags were edited
+                if (fieldName === 'tags') {
+                    this.renderTagCloud();
+                }
             }
         };
         
