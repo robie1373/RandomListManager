@@ -221,3 +221,36 @@ td {
     cursor: not-allowed;
     opacity: 0.5;
 }
+
+/* Inline editing styles */
+td.editable {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+td.editable:hover {
+    background-color: rgba(42, 161, 152, 0.2);
+}
+
+td.editing {
+    padding: 0 !important;
+    background-color: rgba(42, 161, 152, 0.3);
+}
+
+.cell-input {
+    width: 100%;
+    padding: 8px;
+    border: 2px solid var(--cyan);
+    background-color: var(--bg-card);
+    color: var(--text-main);
+    font-family: inherit;
+    font-size: inherit;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+.cell-input:focus {
+    outline: none;
+    border-color: var(--orange);
+    box-shadow: 0 0 5px rgba(203, 75, 22, 0.5);
+}

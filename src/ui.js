@@ -38,10 +38,19 @@ export const UI = {
         });
         
         // Delete Item Buttons (delegated)
-        document.getElementById('tableBody').addEventListener('click', (e) => {
+        const tableBody = document.getElementById('tableBody');
+        tableBody.addEventListener('click', (e) => {
             if (e.target.classList.contains('btn-delete')) {
                 const index = parseInt(e.target.dataset.index);
                 this.deleteItem(index);
+            }
+        });
+
+        // Inline editing for table cells
+        tableBody.addEventListener('click', (e) => {
+            if (e.target.tagName === 'TD' && e.target.classList.contains('editable')) {
+                const row = e.target.parentElement;
+                this.editCell(e.target, row);
             }
         });
     },
@@ -125,20 +134,20 @@ export const UI = {
             // Show example row when table is empty
             body.innerHTML = `
                 <tr class="example-row">
-                    <td>Example ${tabLabel}</td>
-                    <td>example-tag</td>
-                    <td>Reference</td>
-                    <td>50</td>
+                    <td class="editable" data-field="name">Example ${tabLabel}</td>
+                    <td class="editable" data-field="tags">example-tag</td>
+                    <td class="editable" data-field="reference">Reference</td>
+                    <td class="editable" data-field="weight">50</td>
                     <td><button class="btn-delete" disabled>×</button></td>
                 </tr>
             `;
         } else {
             body.innerHTML = filtered.map((item, index) => `
-                <tr>
-                    <td>${item.name}</td>
-                    <td>${item.tags || ''}</td>
-                    <td>${item.reference || ''}</td>
-                    <td>${item.weight || 1}</td>
+                <tr data-item-index="${index}">
+                    <td class="editable" data-field="name">${item.name}</td>
+                    <td class="editable" data-field="tags">${item.tags || ''}</td>
+                    <td class="editable" data-field="reference">${item.reference || ''}</td>
+                    <td class="editable" data-field="weight">${item.weight || 1}</td>
                     <td><button class="btn-delete" data-index="${index}">×</button></td>
                 </tr>
             `).join('');
@@ -190,6 +199,153 @@ export const UI = {
     addToHistory(result) {
         // Placeholder for history tracking functionality
         rollHistory.push(result);
+    },
+
+    editCell(cell, row) {
+        // Skip if already editing
+        if (cell.classList.contains('editing')) return;
+        
+        const fieldName = cell.getAttribute('data-field');
+        const originalValue = cell.innerText;
+        const isExampleRow = row.classList.contains('example-row');
+        
+        let item = null;
+        if (!isExampleRow) {
+            const itemIndex = parseInt(row.getAttribute('data-item-index'));
+            const filtered = this.getFilteredList();
+            item = filtered[itemIndex];
+            if (!item) return;
+        }
+        
+        // Create input field
+        const input = document.createElement('input');
+        input.type = fieldName === 'weight' ? 'number' : 'text';
+        input.value = originalValue;
+        input.className = 'cell-input';
+        
+        if (fieldName === 'weight') {
+            input.min = '1';
+            input.max = '100';
+        }
+        
+        // Replace cell content with input
+        cell.classList.add('editing');
+        cell.innerHTML = '';
+        cell.appendChild(input);
+        input.focus();
+        input.select();
+        
+        let escapePressed = false;
+        
+        // Save on blur or Enter
+        const saveEdit = () => {
+            if (input.parentElement !== cell) return; // Already removed
+            if (escapePressed) return; // Don't save if escape was pressed
+            
+            let newValue = input.value.trim();
+            
+            // Validate and constrain weight
+            if (fieldName === 'weight') {
+                newValue = Math.max(1, Math.min(100, parseInt(newValue) || 40));
+            }
+            
+            if (isExampleRow) {
+                // Create new item from example row
+                const newItem = {
+                    name: '',
+                    tags: '',
+                    reference: '',
+                    weight: 40
+                };
+                
+                // Get current values from the row
+                const cells = row.querySelectorAll('td.editable');
+                cells.forEach(currentCell => {
+                    const field = currentCell.getAttribute('data-field');
+                    let value;
+                    
+                    if (currentCell.classList.contains('editing')) {
+                        // Get value from input if this is the cell being edited
+                        const input = currentCell.querySelector('input');
+                        value = input ? input.value : newValue;
+                    } else {
+                        // Get value from cell text
+                        value = currentCell.innerText;
+                    }
+                    
+                    if (field === fieldName) {
+                        newItem[field] = newValue;
+                    } else {
+                        newItem[field] = value;
+                    }
+                });
+                
+                // Validate and set defaults
+                newItem.name = newItem.name || '';
+                newItem.tags = newItem.tags || '';
+                newItem.reference = newItem.reference || '';
+                newItem.weight = Math.max(1, Math.min(100, parseInt(newItem.weight) || 40));
+                
+                // Only create item if name is not empty or example text
+                if (newItem.name && !newItem.name.includes('Example')) {
+                    data[currentTab].push(newItem);
+                    localStorage.setItem(STORAGE_KEY + currentTab, JSON.stringify(data[currentTab]));
+                    this.renderList();
+                    return;
+                } else {
+                    // Just update the cell display with the new value
+                    cell.classList.remove('editing');
+                    cell.innerText = newValue;
+                    return;
+                }
+            } else {
+                // Update existing item
+                const actualIndex = data[currentTab].indexOf(item);
+                if (actualIndex > -1) {
+                    data[currentTab][actualIndex][fieldName] = newValue;
+                }
+                
+                // Update cell display
+                cell.classList.remove('editing');
+                cell.innerText = newValue;
+                
+                // Save to localStorage
+                localStorage.setItem(STORAGE_KEY + currentTab, JSON.stringify(data[currentTab]));
+            }
+        };
+        
+        input.addEventListener('blur', saveEdit);
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                saveEdit();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                escapePressed = true;
+                cell.classList.remove('editing');
+                cell.innerText = originalValue;
+            } else if (e.key === 'Tab') {
+                e.preventDefault();
+                saveEdit();
+                
+                // Find next or previous editable cell
+                const cells = Array.from(row.querySelectorAll('td.editable'));
+                const currentIndex = cells.indexOf(cell);
+                let nextCell;
+                
+                if (e.shiftKey) {
+                    // Shift+Tab: previous cell
+                    nextCell = currentIndex > 0 ? cells[currentIndex - 1] : null;
+                } else {
+                    // Tab: next cell
+                    nextCell = currentIndex < cells.length - 1 ? cells[currentIndex + 1] : null;
+                }
+                
+                if (nextCell) {
+                    this.editCell(nextCell, row);
+                }
+            }
+        });
     }
 };
 

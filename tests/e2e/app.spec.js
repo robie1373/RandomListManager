@@ -424,4 +424,439 @@ test.describe('Random List Manager E2E', () => {
         expect(headerTexts[2]).toBe('Reference');
         expect(headerTexts[3]).toBe('Weight');
     });
+
+    test('should edit item name in table', async ({ page }) => {
+        // Add an item
+        const input = page.locator('#simpleInput');
+        await input.fill('Original Name');
+        await page.click('.btn-add');
+        
+        // Click on the name cell to edit
+        const nameCell = page.locator('td:first-child');
+        await nameCell.click();
+        
+        // Should see an input field
+        const cellInput = nameCell.locator('input');
+        await expect(cellInput).toBeVisible();
+        
+        // Clear and type new name
+        await cellInput.fill('Updated Name');
+        await cellInput.press('Enter');
+        
+        // Name should be updated
+        await expect(nameCell).toContainText('Updated Name');
+    });
+
+    test('should edit item tags in table', async ({ page }) => {
+        // Add an item
+        const input = page.locator('#simpleInput');
+        await input.fill('Test Item');
+        await page.click('.btn-add');
+        
+        // Click on the tags cell (second column)
+        const row = page.locator('tbody tr').first();
+        const tagsCell = row.locator('td:nth-child(2)');
+        await tagsCell.click();
+        
+        // Type tags
+        const cellInput = tagsCell.locator('input');
+        await cellInput.fill('magic,rare');
+        await cellInput.press('Enter');
+        
+        // Tags should be updated
+        await expect(tagsCell).toContainText('magic,rare');
+    });
+
+    test('should edit item reference in table', async ({ page }) => {
+        // Add an item
+        const input = page.locator('#simpleInput');
+        await input.fill('Referenced Item');
+        await page.click('.btn-add');
+        
+        // Click on the reference cell (third column)
+        const row = page.locator('tbody tr').first();
+        const refCell = row.locator('td:nth-child(3)');
+        await refCell.click();
+        
+        // Type reference
+        const cellInput = refCell.locator('input');
+        await cellInput.fill('p.42');
+        await cellInput.press('Enter');
+        
+        // Reference should be updated
+        await expect(refCell).toContainText('p.42');
+    });
+
+    test('should edit item weight in table with constraints', async ({ page }) => {
+        // Add an item
+        const input = page.locator('#simpleInput');
+        await input.fill('Heavy Item');
+        await page.click('.btn-add');
+        
+        // Click on the weight cell (fourth column)
+        const row = page.locator('tbody tr').first();
+        const weightCell = row.locator('td:nth-child(4)');
+        await weightCell.click();
+        
+        // Try to set weight above 100 (should be clamped)
+        const cellInput = weightCell.locator('input');
+        await cellInput.fill('250');
+        await cellInput.press('Enter');
+        
+        // Should be clamped to 100
+        await expect(weightCell).toContainText('100');
+    });
+
+    test('should persist edited data after page reload', async ({ page }) => {
+        // Add an item
+        const input = page.locator('#simpleInput');
+        await input.fill('Test Item');
+        await page.click('.btn-add');
+        
+        // Edit the name
+        const nameCell = page.locator('td:first-child');
+        await nameCell.click();
+        const cellInput = nameCell.locator('input');
+        await cellInput.fill('Persisted Item');
+        await cellInput.press('Enter');
+        
+        // Edit the tags
+        const row = page.locator('tbody tr').first();
+        const tagsCell = row.locator('td:nth-child(2)');
+        await tagsCell.click();
+        const tagsInput = tagsCell.locator('input');
+        await tagsInput.fill('persistent');
+        await tagsInput.press('Enter');
+        
+        // Reload the page
+        await page.reload();
+        
+        // Changes should persist
+        await expect(page.locator('td:has-text("Persisted Item")')).toBeVisible();
+        const reloadedRow = page.locator('tbody tr').first();
+        await expect(reloadedRow.locator('td:nth-child(2)')).toContainText('persistent');
+    });
+
+    test('should cancel edit with Escape key', async ({ page }) => {
+        // Add an item
+        const input = page.locator('#simpleInput');
+        await input.fill('Original');
+        await page.click('.btn-add');
+        
+        // Click to edit
+        const nameCell = page.locator('td:first-child');
+        await nameCell.click();
+        
+        // Type something but press Escape
+        const cellInput = nameCell.locator('input');
+        await cellInput.fill('Cancelled');
+        await cellInput.press('Escape');
+        
+        // Input should be removed
+        await expect(cellInput).not.toBeVisible();
+        // Cell should have original value
+        const cellText = await nameCell.innerText();
+        expect(cellText.trim()).toBe('Original');
+    });
+
+    test('should save edit on blur', async ({ page }) => {
+        // Add an item
+        const input = page.locator('#simpleInput');
+        await input.fill('Blur Test');
+        await page.click('.btn-add');
+        
+        // Click to edit and type
+        const nameCell = page.locator('td:first-child');
+        await nameCell.click();
+        const cellInput = nameCell.locator('input');
+        await cellInput.fill('Blur Saved');
+        
+        // Click elsewhere to blur
+        await page.click('#rollBtn');
+        
+        // Should be saved
+        await expect(nameCell).toContainText('Blur Saved');
+    });
+
+    test('should have editable class on table cells', async ({ page }) => {
+        // Add an item
+        const input = page.locator('#simpleInput');
+        await input.fill('Editable Test');
+        await page.click('.btn-add');
+        
+        // Check that cells have editable class
+        const nameCell = page.locator('td:first-child');
+        const hasEditableClass = await nameCell.evaluate((el) => el.classList.contains('editable'));
+        expect(hasEditableClass).toBe(true);
+        
+        // Check that action cell (delete button) doesn't have editable class
+        const row = page.locator('tbody tr').first();
+        const actionCell = row.locator('td:last-child');
+        const hasActionEditableClass = await actionCell.evaluate((el) => el.classList.contains('editable'));
+        expect(hasActionEditableClass).toBe(false);
+    });
+
+    test('should create item by editing example row name', async ({ page }) => {
+        // Example row should be visible
+        const exampleRow = page.locator('.example-row');
+        await expect(exampleRow).toBeVisible();
+        
+        // Click on the name cell in example row
+        const nameCell = exampleRow.locator('td:first-child');
+        await nameCell.click();
+        
+        // Edit the name
+        const input = nameCell.locator('input');
+        await input.waitFor({ state: 'visible' });
+        await input.fill('Potion of Healing');
+        await input.press('Enter');
+        
+        // Item should be created and visible
+        await expect(page.locator('td:has-text("Potion of Healing")')).toBeVisible();
+        
+        // Example row should no longer be visible
+        await expect(exampleRow).not.toBeVisible();
+    });
+
+    test('should create item with tags from example row', async ({ page }) => {
+        // Click on tags cell in example row
+        const exampleRow = page.locator('.example-row');
+        const tagsCell = exampleRow.locator('td:nth-child(2)');
+        await tagsCell.click();
+        
+        // Edit tags
+        const input = tagsCell.locator('input');
+        await input.waitFor({ state: 'visible' });
+        await input.fill('magic,rare');
+        await input.press('Enter');
+        
+        // The example row stays but tags are updated
+        // Click on name to create the item
+        const nameCell = exampleRow.locator('td:first-child');
+        await nameCell.click();
+        const nameInput = nameCell.locator('input');
+        await nameInput.waitFor({ state: 'visible' });
+        await nameInput.fill('Tagged Item');
+        await nameInput.press('Enter');
+        
+        // Item should be created with tags
+        const row = page.locator('tr:has-text("Tagged Item")');
+        await expect(row.locator('td:nth-child(2)')).toContainText('magic,rare');
+    });
+
+    test('should create item with reference and weight from example row', async ({ page }) => {
+        // Click on reference cell
+        const exampleRow = page.locator('.example-row');
+        const refCell = exampleRow.locator('td:nth-child(3)');
+        await refCell.click();
+        const refInput = refCell.locator('input');
+        await refInput.waitFor({ state: 'visible' });
+        await refInput.fill('p.99');
+        await refInput.press('Enter');
+        
+        // Click on weight cell
+        const weightCell = exampleRow.locator('td:nth-child(4)');
+        await weightCell.click();
+        const weightInput = weightCell.locator('input');
+        await weightInput.waitFor({ state: 'visible' });
+        await weightInput.fill('75');
+        await weightInput.press('Enter');
+        
+        // Create the item with name
+        const nameCell = exampleRow.locator('td:first-child');
+        await nameCell.click();
+        const nameInput = nameCell.locator('input');
+        await nameInput.waitFor({ state: 'visible' });
+        await nameInput.fill('Complex Item');
+        await nameInput.press('Enter');
+        
+        // Verify all fields
+        const row = page.locator('tr:has-text("Complex Item")');
+        await expect(row.locator('td:nth-child(3)')).toContainText('p.99');
+        await expect(row.locator('td:nth-child(4)')).toContainText('75');
+    });
+
+    test('should clamp weight when creating from example row', async ({ page }) => {
+        const exampleRow = page.locator('.example-row');
+        const weightCell = exampleRow.locator('td:nth-child(4)');
+        await weightCell.click();
+        const input = weightCell.locator('input');
+        await input.waitFor({ state: 'visible' });
+        await input.fill('500');
+        await input.press('Enter');
+        
+        // Create item with name
+        const nameCell = exampleRow.locator('td:first-child');
+        await nameCell.click();
+        const nameInput = nameCell.locator('input');
+        await nameInput.waitFor({ state: 'visible' });
+        await nameInput.fill('Heavy Item');
+        await nameInput.press('Enter');
+        
+        // Weight should be clamped to 100
+        const row = page.locator('tr:has-text("Heavy Item")');
+        await expect(row.locator('td:nth-child(4)')).toContainText('100');
+    });
+
+    test('should not create item if name field contains "Example"', async ({ page }) => {
+        const exampleRow = page.locator('.example-row');
+        const nameCell = exampleRow.locator('td:first-child');
+        await nameCell.click();
+        
+        // Try to save with "Example" text
+        const input = nameCell.locator('input');
+        await input.waitFor({ state: 'visible' });
+        await input.fill('Example Item');
+        await input.press('Enter');
+        
+        // Example row should still be visible (no item created)
+        await expect(exampleRow).toBeVisible();
+    });
+
+    test('should preserve example row data between edits', async ({ page }) => {
+        const exampleRow = page.locator('.example-row');
+        
+        // Edit name (with "Example" prefix to avoid creating item)
+        const nameCell = exampleRow.locator('td:first-child');
+        await nameCell.click();
+        const nameInput = nameCell.locator('input');
+        await nameInput.waitFor({ state: 'visible' });
+        await nameInput.fill('Example Thing');
+        await nameInput.press('Enter');
+        
+        // Edit tags
+        const tagsCell = exampleRow.locator('td:nth-child(2)');
+        await tagsCell.click();
+        const tagsInput = tagsCell.locator('input');
+        await tagsInput.waitFor({ state: 'visible' });
+        await tagsInput.fill('example-test-tag');
+        await tagsInput.press('Enter');
+        
+        // Example row should still be visible (no item created due to "Example" text)
+        await expect(exampleRow).toBeVisible();
+        
+        // Row should show the updates
+        await expect(nameCell).toContainText('Example Thing');
+        await expect(tagsCell).toContainText('example-test-tag');
+    });
+
+    test('should navigate to next cell with Tab key', async ({ page }) => {
+        // Add an item first
+        const input = page.locator('#simpleInput');
+        await input.fill('Sword');
+        await page.locator('.btn-add').click();
+        
+        // Wait for item to be added
+        await expect(page.locator('td:has-text("Sword")')).toBeVisible();
+        
+        // Click on name cell of the first item
+        let row = page.locator('tbody tr').first();
+        let nameCell = row.locator('td:first-child');
+        await nameCell.click();
+        let cellInput = nameCell.locator('input');
+        await cellInput.waitFor({ state: 'visible' });
+        
+        // Clear and type new name
+        await cellInput.fill('Great Sword');
+        
+        // Press Tab to move to next cell (tags)
+        await cellInput.press('Tab');
+        
+        // Wait for focus on tags cell in same row
+        let tagsCell = row.locator('td:nth-child(2)');
+        cellInput = tagsCell.locator('input');
+        await cellInput.waitFor({ state: 'visible' });
+        
+        // Should be able to edit tags cell
+        await cellInput.fill('melee,heavy');
+        await cellInput.press('Enter');
+        
+        // Verify both changes
+        await expect(nameCell).toContainText('Great Sword');
+        await expect(tagsCell).toContainText('melee,heavy');
+    });
+
+    test('should navigate to previous cell with Shift+Tab', async ({ page }) => {
+        // Add an item first
+        const input = page.locator('#simpleInput');
+        await input.fill('Dagger');
+        await page.locator('.btn-add').click();
+        
+        // Wait for item to be added
+        await expect(page.locator('td:has-text("Dagger")')).toBeVisible();
+        
+        // Click on tags cell of the first item
+        let row = page.locator('tbody tr').first();
+        let tagsCell = row.locator('td:nth-child(2)');
+        await tagsCell.click();
+        let cellInput = tagsCell.locator('input');
+        await cellInput.waitFor({ state: 'visible' });
+        
+        // Fill tags
+        await cellInput.fill('melee,small');
+        
+        // Press Shift+Tab to move back to name cell
+        await cellInput.press('Shift+Tab');
+        
+        // Wait for focus on name cell in same row
+        let nameCell = row.locator('td:first-child');
+        cellInput = nameCell.locator('input');
+        await cellInput.waitFor({ state: 'visible' });
+        
+        // Should be able to edit name cell
+        await cellInput.fill('Sharp Dagger');
+        await cellInput.press('Enter');
+        
+        // Verify both changes
+        await expect(nameCell).toContainText('Sharp Dagger');
+        await expect(tagsCell).toContainText('melee,small');
+    });
+
+    test('should navigate multiple cells with Tab', async ({ page }) => {
+        // Add an item first
+        const input = page.locator('#simpleInput');
+        await input.fill('Shield');
+        await page.locator('.btn-add').click();
+        
+        // Wait for item to be added
+        await expect(page.locator('td:has-text("Shield")')).toBeVisible();
+        
+        // Click on name cell of the new item
+        let row = page.locator('tbody tr').first();
+        let nameCell = row.locator('td:first-child');
+        await nameCell.click();
+        let cellInput = nameCell.locator('input');
+        await cellInput.waitFor({ state: 'visible' });
+        await cellInput.fill('Steel Shield');
+        
+        // Tab to tags
+        await cellInput.press('Tab');
+        let tagsCell = row.locator('td:nth-child(2)');
+        cellInput = tagsCell.locator('input');
+        await cellInput.waitFor({ state: 'visible' });
+        await cellInput.fill('armor');
+        
+        // Tab to reference
+        await cellInput.press('Tab');
+        let refCell = row.locator('td:nth-child(3)');
+        cellInput = refCell.locator('input');
+        await cellInput.waitFor({ state: 'visible' });
+        await cellInput.fill('p.45');
+        
+        // Tab to weight
+        await cellInput.press('Tab');
+        let weightCell = row.locator('td:nth-child(4)');
+        cellInput = weightCell.locator('input');
+        await cellInput.waitFor({ state: 'visible' });
+        await cellInput.fill('75');
+        await cellInput.press('Enter');
+        
+        // Verify all changes were saved
+        row = page.locator('tbody tr').first();
+        await expect(row.locator('td:first-child')).toContainText('Steel Shield');
+        await expect(row.locator('td:nth-child(2)')).toContainText('armor');
+        await expect(row.locator('td:nth-child(3)')).toContainText('p.45');
+        await expect(row.locator('td:nth-child(4)')).toContainText('75');
+    });
 });
+
