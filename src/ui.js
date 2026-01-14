@@ -19,8 +19,10 @@ let tabs = JSON.parse(localStorage.getItem(TABS_KEY)) || [
 ];
 
 let data = {};
+let legendData = {};
 tabs.forEach(tab => {
     data[tab.id] = JSON.parse(localStorage.getItem(STORAGE_KEY + tab.id)) || [];
+    legendData[tab.id] = JSON.parse(localStorage.getItem(STORAGE_KEY + 'legend_' + tab.id)) || [];
 });
 
 // --- Core UI Functions ---
@@ -118,9 +120,11 @@ export const UI = {
         const newTab = { id, name: 'Tab Name (click to edit)', color };
         tabs.push(newTab);
         data[id] = [];
+        legendData[id] = [];
         
         this.saveTabs();
         localStorage.setItem(STORAGE_KEY + id, JSON.stringify([]));
+        localStorage.setItem(STORAGE_KEY + 'legend_' + id, JSON.stringify([]));
         
         this.renderTabs();
         this.switchTab(id);
@@ -216,6 +220,23 @@ export const UI = {
             if (e.target.tagName === 'TD' && e.target.classList.contains('editable')) {
                 const row = e.target.parentElement;
                 this.editCell(e.target, row);
+            }
+        });
+        
+        // Delete Legend Entry Buttons (delegated)
+        const legendTableBody = document.getElementById('legendTableBody');
+        legendTableBody.addEventListener('click', (e) => {
+            if (e.target.classList.contains('btn-delete')) {
+                const index = parseInt(e.target.dataset.legendIndex);
+                this.deleteLegendItem(index);
+            }
+        });
+
+        // Inline editing for legend table cells
+        legendTableBody.addEventListener('click', (e) => {
+            if (e.target.tagName === 'TD' && e.target.classList.contains('editable')) {
+                const row = e.target.parentElement;
+                this.editLegendCell(e.target, row);
             }
         });
         
@@ -381,6 +402,35 @@ export const UI = {
         body.innerHTML = itemsHTML + exampleRowHTML;
 
         localStorage.setItem(STORAGE_KEY + currentTab, JSON.stringify(data[currentTab]));
+        
+        // Render legend table
+        this.renderLegend();
+    },
+
+    renderLegend() {
+        const body = document.getElementById('legendTableBody');
+        const legends = legendData[currentTab] || [];
+        
+        const legendsHTML = legends.map((legend, index) => {
+            return `
+            <tr data-legend-index="${index}">
+                <td class="editable" data-field="acronym">${legend.acronym}</td>
+                <td class="editable" data-field="fullName">${legend.fullName || ''}</td>
+                <td><button class="btn-delete" data-legend-index="${index}">×</button></td>
+            </tr>
+        `}).join('');
+        
+        const exampleRowHTML = `
+            <tr class="example-row">
+                <td class="editable" data-field="acronym">HP</td>
+                <td class="editable" data-field="fullName">Health Points</td>
+                <td><button class="btn-delete" disabled>×</button></td>
+            </tr>
+        `;
+        
+        body.innerHTML = legendsHTML + exampleRowHTML;
+
+        localStorage.setItem(STORAGE_KEY + 'legend_' + currentTab, JSON.stringify(legendData[currentTab]));
     },
 
     addItem() {
@@ -416,6 +466,13 @@ export const UI = {
                 this.renderTagCloud();
                 this.renderList();
             }
+        }
+    },
+
+    deleteLegendItem(index) {
+        if (index >= 0 && index < legendData[currentTab].length) {
+            legendData[currentTab].splice(index, 1);
+            this.renderLegend();
         }
     },
 
@@ -645,6 +702,142 @@ export const UI = {
         });
     },
 
+    editLegendCell(cell, row) {
+        // Skip if already editing
+        if (cell.classList.contains('editing')) return;
+        
+        const fieldName = cell.getAttribute('data-field');
+        const originalValue = cell.innerText;
+        const isExampleRow = row.classList.contains('example-row');
+        
+        let legend = null;
+        if (!isExampleRow) {
+            const legendIndex = parseInt(row.getAttribute('data-legend-index'));
+            legend = legendData[currentTab][legendIndex];
+            if (!legend) return;
+        }
+        
+        // Create input field
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = originalValue;
+        input.className = 'cell-input';
+        
+        // Replace cell content with input
+        cell.classList.add('editing');
+        cell.innerHTML = '';
+        cell.appendChild(input);
+        input.focus();
+        input.select();
+        
+        let escapePressed = false;
+        let saveInProgress = false;
+        
+        // Save on blur or Enter
+        const saveEdit = () => {
+            if (input.parentElement !== cell) return;
+            if (escapePressed) return;
+            if (saveInProgress) return;
+            
+            saveInProgress = true;
+            
+            const newValue = input.value.trim();
+            
+            if (isExampleRow) {
+                // Create new legend entry from example row
+                const newLegend = {
+                    acronym: '',
+                    fullName: ''
+                };
+                
+                // Get current values from the row
+                const cells = row.querySelectorAll('td.editable');
+                cells.forEach(currentCell => {
+                    const field = currentCell.getAttribute('data-field');
+                    let value;
+                    
+                    if (currentCell.classList.contains('editing')) {
+                        value = newValue;
+                    } else {
+                        value = currentCell.innerText;
+                    }
+                    
+                    if (field === fieldName) {
+                        newLegend[field] = newValue;
+                    } else {
+                        newLegend[field] = value;
+                    }
+                });
+                
+                // Only create entry if acronym is not empty or example text
+                if (newLegend.acronym && !newLegend.acronym.includes('HP')) {
+                    if (!legendData[currentTab]) {
+                        legendData[currentTab] = [];
+                    }
+                    legendData[currentTab].push(newLegend);
+                    localStorage.setItem(STORAGE_KEY + 'legend_' + currentTab, JSON.stringify(legendData[currentTab]));
+                    this.renderLegend();
+                    return;
+                } else {
+                    // Just update the cell display with the new value
+                    cell.classList.remove('editing');
+                    cell.innerText = newValue;
+                    return;
+                }
+            } else {
+                // Update existing legend entry
+                const legendIndex = parseInt(row.getAttribute('data-legend-index'));
+                if (legendIndex >= 0 && legendIndex < legendData[currentTab].length) {
+                    if (fieldName === 'acronym' && !newValue) {
+                        this.showMessage('Acronym cannot be empty.');
+                        cell.classList.remove('editing');
+                        cell.innerText = legend.acronym;
+                        return;
+                    }
+                    legendData[currentTab][legendIndex][fieldName] = newValue;
+                }
+                
+                // Update cell display
+                cell.classList.remove('editing');
+                cell.innerText = newValue;
+                
+                // Save to localStorage
+                localStorage.setItem(STORAGE_KEY + 'legend_' + currentTab, JSON.stringify(legendData[currentTab]));
+            }
+        };
+        
+        input.addEventListener('blur', saveEdit);
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                saveEdit();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                escapePressed = true;
+                cell.classList.remove('editing');
+                cell.innerText = originalValue;
+            } else if (e.key === 'Tab') {
+                e.preventDefault();
+                saveEdit();
+                
+                // Find next or previous editable cell
+                const cells = Array.from(row.querySelectorAll('td.editable'));
+                const currentIndex = cells.indexOf(cell);
+                let nextCell;
+                
+                if (e.shiftKey) {
+                    nextCell = currentIndex > 0 ? cells[currentIndex - 1] : null;
+                } else {
+                    nextCell = currentIndex < cells.length - 1 ? cells[currentIndex + 1] : null;
+                }
+                
+                if (nextCell) {
+                    this.editLegendCell(nextCell, row);
+                }
+            }
+        });
+    },
+
     toggleDarkMode() {
         document.body.classList.toggle('dark-mode');
         const isDark = document.body.classList.contains('dark-mode');
@@ -682,22 +875,34 @@ export const UI = {
         const currentTabObj = tabs.find(t => t.id === currentTab);
         const tabName = currentTabObj ? currentTabObj.name : currentTab;
         const tableData = data[currentTab];
+        const legends = legendData[currentTab] || [];
 
         if (format === 'csv') {
             const csv = this.convertToCSV(tableData);
-            this.downloadFile(csv, `${tabName}.csv`, 'text/csv');
+            const legendCsv = this.convertLegendToCSV(legends);
+            const combined = csv + '\n\nLegend\n' + legendCsv;
+            this.downloadFile(combined, `${tabName}.csv`, 'text/csv');
         } else if (format === 'json') {
-            const json = JSON.stringify(tableData, null, 2);
+            const exportObj = {
+                items: tableData,
+                legend: legends
+            };
+            const json = JSON.stringify(exportObj, null, 2);
             this.downloadFile(json, `${tabName}.json`, 'application/json');
         } else if (format === 'xlsx') {
-            this.exportXLSX(tableData, tabName);
+            this.exportXLSX(tableData, legends, tabName);
         }
     },
 
     exportAllTabs() {
         tabs.forEach(tab => {
             const items = data[tab.id] || [];
-            const json = JSON.stringify(items, null, 2);
+            const legends = legendData[tab.id] || [];
+            const exportObj = {
+                items,
+                legend: legends
+            };
+            const json = JSON.stringify(exportObj, null, 2);
             this.downloadFile(json, `${tab.name}.json`, 'application/json');
         });
         this.showMessage(`Exported ${tabs.length} tabs`);
@@ -726,15 +931,46 @@ export const UI = {
         return csvRows.join('\n');
     },
 
-    exportXLSX(data, tabName) {
+    convertLegendToCSV(legends) {
+        if (!legends || legends.length === 0) return '';
+        
+        const headers = ['acronym', 'fullName'];
+        const csvRows = [];
+        
+        // Add header row
+        csvRows.push(headers.join(','));
+        
+        // Add data rows
+        legends.forEach(legend => {
+            const values = headers.map(header => {
+                const value = legend[header] || '';
+                const escaped = String(value).replace(/"/g, '""');
+                return `"${escaped}"`;
+            });
+            csvRows.push(values.join(','));
+        });
+        
+        return csvRows.join('\n');
+    },
+
+    exportXLSX(data, legends, tabName) {
         if (typeof XLSX === 'undefined') {
             alert('XLSX library not loaded. Please refresh the page.');
             return;
         }
 
-        const worksheet = XLSX.utils.json_to_sheet(data);
         const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, tabName.substring(0, 31));
+        
+        // Add items sheet
+        const itemsSheet = XLSX.utils.json_to_sheet(data);
+        XLSX.utils.book_append_sheet(workbook, itemsSheet, 'Items');
+        
+        // Add legend sheet if there are legends
+        if (legends && legends.length > 0) {
+            const legendSheet = XLSX.utils.json_to_sheet(legends);
+            XLSX.utils.book_append_sheet(workbook, legendSheet, 'Legend');
+        }
+        
         XLSX.writeFile(workbook, `${tabName}.xlsx`);
     },
 
@@ -754,13 +990,24 @@ export const UI = {
         const extension = file.name.split('.').pop().toLowerCase();
         
         try {
-            let importedData = [];
+            let importedItems = [];
+            let importedLegends = [];
+            
             if (extension === 'json') {
                 const text = await file.text();
-                importedData = JSON.parse(text);
+                const parsed = JSON.parse(text);
+                // Handle both old format (array) and new format (object with items and legend)
+                if (Array.isArray(parsed)) {
+                    importedItems = parsed;
+                } else {
+                    importedItems = parsed.items || [];
+                    importedLegends = parsed.legend || [];
+                }
             } else if (extension === 'csv') {
                 const text = await file.text();
-                importedData = this.parseCSV(text);
+                const parsed = this.parseCSV(text);
+                importedItems = parsed.items || [];
+                importedLegends = parsed.legend || [];
             } else if (extension === 'xlsx') {
                 if (typeof XLSX === 'undefined') {
                     console.error('XLSX library not loaded.');
@@ -768,14 +1015,23 @@ export const UI = {
                 }
                 const arrayBuffer = await file.arrayBuffer();
                 const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                importedData = XLSX.utils.sheet_to_json(firstSheet);
+                
+                // Read Items sheet (or first sheet if no Items sheet)
+                const itemsSheetName = workbook.SheetNames.includes('Items') ? 'Items' : workbook.SheetNames[0];
+                const itemsSheet = workbook.Sheets[itemsSheetName];
+                importedItems = XLSX.utils.sheet_to_json(itemsSheet);
+                
+                // Read Legend sheet if it exists
+                if (workbook.SheetNames.includes('Legend')) {
+                    const legendSheet = workbook.Sheets['Legend'];
+                    importedLegends = XLSX.utils.sheet_to_json(legendSheet);
+                }
             } else {
                 console.error('Unsupported file format.');
                 return;
             }
 
-            this.handleImportConflict(file.name, importedData);
+            this.handleImportConflict(file.name, importedItems, importedLegends);
         } catch (error) {
             console.error('Import error:', error);
         }
@@ -783,13 +1039,65 @@ export const UI = {
 
     parseCSV(text) {
         const lines = text.trim().split('\n');
+        if (lines.length < 2) return { items: [], legend: [] };
+        
+        // Find if there's a Legend section (look for a line that is just "Legend", accounting for quotes)
+        let legendStartIndex = -1;
+        for (let i = 0; i < lines.length; i++) {
+            const trimmedLine = lines[i].trim();
+            if (trimmedLine.toLowerCase() === 'legend' || trimmedLine.toLowerCase() === '"legend"') {
+                legendStartIndex = i;
+                break;
+            }
+        }
+        
+        // Parse items section - items come before Legend marker
+        let itemLines = [];
+        if (legendStartIndex > 0) {
+            // Get all lines up to "Legend", excluding empty lines at the end
+            for (let i = 0; i < legendStartIndex; i++) {
+                if (lines[i].trim()) {
+                    itemLines.push(lines[i]);
+                }
+            }
+        } else {
+            // No legend section, all non-empty lines are items
+            itemLines = lines.filter(line => line.trim());
+        }
+        
+        const items = this.parseCSVSection(itemLines);
+        
+        // Parse legend section if it exists
+        let legends = [];
+        if (legendStartIndex > 0) {
+            // Collect legend lines starting from line after "Legend"
+            const legendLines = [];
+            for (let i = legendStartIndex + 1; i < lines.length; i++) {
+                if (lines[i].trim()) {
+                    legendLines.push(lines[i]);
+                }
+            }
+            if (legendLines.length >= 1) {
+                legends = this.parseCSVSection(legendLines);
+            }
+        }
+        
+        return { items, legend: legends };
+    },
+    
+    parseCSVSection(lines) {
         if (lines.length < 2) return [];
         
-        const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+        // Parse headers from first line
+        const headers = this.parseCSVLine(lines[0]);
         const data = [];
         
+        // Parse data rows
         for (let i = 1; i < lines.length; i++) {
-            const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+            const line = lines[i].trim();
+            if (!line) continue;
+            
+            const values = this.parseCSVLine(line);
             const item = {};
             headers.forEach((header, index) => {
                 item[header] = values[index] || '';
@@ -800,20 +1108,49 @@ export const UI = {
         return data;
     },
 
-    handleImportConflict(filename, importedData) {
+    parseCSVLine(line) {
+        const result = [];
+        let current = '';
+        let insideQuotes = false;
+        
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            
+            if (char === '"') {
+                insideQuotes = !insideQuotes;
+            } else if (char === ',' && !insideQuotes) {
+                result.push(current.trim().replace(/^"|"$/g, ''));
+                current = '';
+            } else {
+                current += char;
+            }
+        }
+        
+        // Add the last field
+        result.push(current.trim().replace(/^"|"$/g, ''));
+        return result;
+    },
+
+    handleImportConflict(filename, importedItems, importedLegends) {
         const baseName = filename.replace(/\.(json|csv|xlsx)$/i, '') || 'Imported Tab';
         const normalizedName = baseName.trim();
 
-        const normalizedData = this.normalizeImportedData(importedData);
+        const normalizedItems = this.normalizeImportedData(importedItems);
+        const normalizedLegends = this.normalizeLegendData(importedLegends);
 
         const existing = tabs.find(t => t.name.toLowerCase() === normalizedName.toLowerCase());
         if (!existing) {
-            this.createTabWithData(normalizedName, normalizedData);
+            this.createTabWithData(normalizedName, normalizedItems, normalizedLegends);
             return;
         }
 
         // Store pending import and show inline prompt
-        pendingImport = { name: normalizedName, data: normalizedData, tabId: existing.id };
+        pendingImport = { 
+            name: normalizedName, 
+            data: normalizedItems, 
+            legend: normalizedLegends,
+            tabId: existing.id 
+        };
         this.showPrompt({
             message: `Tab "${normalizedName}" already exists. Overwrite or append?`,
             primaryText: 'Overwrite',
@@ -823,6 +1160,24 @@ export const UI = {
         });
     },
 
+    normalizeLegendData(importedLegends) {
+        if (!Array.isArray(importedLegends)) return [];
+        const seen = new Set();
+        const result = [];
+        importedLegends.forEach(legend => {
+            const acronym = (legend.acronym || '').trim();
+            if (!acronym) return;
+            const key = acronym.toLowerCase();
+            if (seen.has(key)) return;
+            seen.add(key);
+            result.push({
+                acronym,
+                fullName: legend.fullName || ''
+            });
+        });
+        return result;
+    },
+        
     normalizeImportedData(importedData) {
         if (!Array.isArray(importedData)) return [];
         // Map to expected shape and enforce unique names
@@ -844,23 +1199,27 @@ export const UI = {
         return result;
     },
 
-    createTabWithData(name, items) {
+    createTabWithData(name, items, legends = []) {
         const id = 'tab_' + Date.now();
         const color = colorsPalette[tabs.length % colorsPalette.length];
         const newTab = { id, name, color };
         tabs.push(newTab);
         data[id] = items;
+        legendData[id] = legends;
         this.saveTabs();
         localStorage.setItem(STORAGE_KEY + id, JSON.stringify(items));
+        localStorage.setItem(STORAGE_KEY + 'legend_' + id, JSON.stringify(legends));
         this.renderTabs();
         this.switchTab(id);
     },
 
     overwriteTabFromImport() {
         if (!pendingImport) return;
-        const { tabId, data: items } = pendingImport;
+        const { tabId, data: items, legend: legends = [] } = pendingImport;
         data[tabId] = items;
+        legendData[tabId] = legends;
         localStorage.setItem(STORAGE_KEY + tabId, JSON.stringify(items));
+        localStorage.setItem(STORAGE_KEY + 'legend_' + tabId, JSON.stringify(legends));
         this.saveTabs();
         this.renderTabs();
         this.switchTab(tabId);
@@ -869,11 +1228,15 @@ export const UI = {
 
     appendTabFromImport() {
         if (!pendingImport) return;
-        const { tabId, data: items } = pendingImport;
-        const existing = data[tabId] || [];
-        const merged = this.mergeUniqueByName(existing, items);
-        data[tabId] = merged;
-        localStorage.setItem(STORAGE_KEY + tabId, JSON.stringify(merged));
+        const { tabId, data: items, legend: legends = [] } = pendingImport;
+        const existingItems = data[tabId] || [];
+        const existingLegends = legendData[tabId] || [];
+        const mergedItems = this.mergeUniqueByName(existingItems, items);
+        const mergedLegends = this.mergeLegendsByAcronym(existingLegends, legends);
+        data[tabId] = mergedItems;
+        legendData[tabId] = mergedLegends;
+        localStorage.setItem(STORAGE_KEY + tabId, JSON.stringify(mergedItems));
+        localStorage.setItem(STORAGE_KEY + 'legend_' + tabId, JSON.stringify(mergedLegends));
         this.saveTabs();
         this.renderTabs();
         this.switchTab(tabId);
@@ -903,7 +1266,9 @@ export const UI = {
         const tabId = tabs[idx].id;
         tabs.splice(idx, 1);
         delete data[tabId];
+        delete legendData[tabId];
         localStorage.removeItem(STORAGE_KEY + tabId);
+        localStorage.removeItem(STORAGE_KEY + 'legend_' + tabId);
         this.saveTabs();
         this.renderTabs();
         const nextTab = tabs[0] ? tabs[0].id : null;
@@ -921,6 +1286,19 @@ export const UI = {
             if (!key || seen.has(key)) return;
             seen.add(key);
             result.push(item);
+        });
+        return result;
+    },
+
+    mergeLegendsByAcronym(listA, listB) {
+        const seen = new Set();
+        const combined = [...listA, ...listB];
+        const result = [];
+        combined.forEach(legend => {
+            const key = (legend.acronym || '').trim().toLowerCase();
+            if (!key || seen.has(key)) return;
+            seen.add(key);
+            result.push(legend);
         });
         return result;
     },

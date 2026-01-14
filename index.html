@@ -84,20 +84,41 @@
             <div id="tagCloud" class="tag-cloud"></div>
         </div>
         
-        <!-- Items Table -->
-        <table>
-            <thead>
-                <tr>
-                    <th id="tableNameHeader">Name</th>
-                    <th>Tags</th>
-                    <th>Reference</th>
-                    <th>Weight</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody id="tableBody">
-            </tbody>
-        </table>
+        <!-- Tables Container -->
+        <div class="tables-container">
+            <!-- Items Table -->
+            <div class="main-table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th id="tableNameHeader">Name</th>
+                            <th>Tags</th>
+                            <th>Reference</th>
+                            <th>Weight</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Legend Table -->
+            <div class="legend-wrapper">
+                <h3 class="legend-title">Legend</h3>
+                <table class="legend-table">
+                    <thead>
+                        <tr>
+                            <th>Acronym</th>
+                            <th>Full Name</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="legendTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
         
         <!-- Help Text -->
         <div class="help-text">

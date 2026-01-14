@@ -11,7 +11,7 @@ const APP_URL = 'http://localhost:5500'; // Adjust to your local server port
 
 // Helper function to add an item via the example row
 async function addItemViaExampleRow(page, itemName) {
-    const exampleRow = page.locator('.example-row');
+    const exampleRow = page.locator('#tableBody .example-row');
     const nameCell = exampleRow.locator('td:first-child');
     await nameCell.click();
     const input = nameCell.locator('input');
@@ -358,24 +358,24 @@ test.describe('Random List Manager E2E', () => {
 
     test('should display example row when table is empty', async ({ page }) => {
         // Table should be empty initially, showing example row
-        const exampleRow = page.locator('.example-row');
+        const exampleRow = page.locator('#tableBody .example-row');
         await expect(exampleRow).toBeVisible();
         
         // Example row should contain "Example Item" (for Items tab)
-        await expect(page.locator('.example-row td:first-child')).toContainText('Example Item');
+        await expect(page.locator('#tableBody .example-row td:first-child')).toContainText('Example Item');
         
         // Should have example tag
-        await expect(page.locator('.example-row td:nth-child(2)')).toContainText('example-tag');
+        await expect(page.locator('#tableBody .example-row td:nth-child(2)')).toContainText('example-tag');
         
         // Should have reference column
-        await expect(page.locator('.example-row td:nth-child(3)')).toContainText('Reference');
+        await expect(page.locator('#tableBody .example-row td:nth-child(3)')).toContainText('Reference');
         
         // Should have weight
-        await expect(page.locator('.example-row td:nth-child(4)')).toContainText('50');
+        await expect(page.locator('#tableBody .example-row td:nth-child(4)')).toContainText('50');
     });
 
     test('should hide example row when item is added', async ({ page }) => {
-        const exampleRow = page.locator('.example-row');
+        const exampleRow = page.locator('#tableBody .example-row');
         
         // Example row should be visible initially
         await expect(exampleRow).toBeVisible();
@@ -392,7 +392,7 @@ test.describe('Random List Manager E2E', () => {
 
     test('should show different example rows for each tab', async ({ page }) => {
         // Items tab should show "Example Item"
-        const exampleRow = page.locator('.example-row td:first-child');
+        const exampleRow = page.locator('#tableBody .example-row td:first-child');
         await expect(exampleRow).toContainText('Example Item');
         
         // Switch to Weapons tab
@@ -608,7 +608,7 @@ test.describe('Random List Manager E2E', () => {
 
     test('should create item by editing example row name', async ({ page }) => {
         // Example row should be visible
-        const exampleRow = page.locator('.example-row');
+        const exampleRow = page.locator('#tableBody .example-row');
         await expect(exampleRow).toBeVisible();
         
         // Click on the name cell in example row
@@ -630,7 +630,7 @@ test.describe('Random List Manager E2E', () => {
 
     test('should create item with tags from example row', async ({ page }) => {
         // Click on tags cell in example row
-        const exampleRow = page.locator('.example-row');
+        const exampleRow = page.locator('#tableBody .example-row');
         const tagsCell = exampleRow.locator('td:nth-child(2)');
         await tagsCell.click();
         
@@ -656,7 +656,7 @@ test.describe('Random List Manager E2E', () => {
 
     test('should create item with reference and weight from example row', async ({ page }) => {
         // Click on reference cell
-        const exampleRow = page.locator('.example-row');
+        const exampleRow = page.locator('#tableBody .example-row');
         const refCell = exampleRow.locator('td:nth-child(3)');
         await refCell.click();
         const refInput = refCell.locator('input');
@@ -687,7 +687,7 @@ test.describe('Random List Manager E2E', () => {
     });
 
     test('should clamp weight when creating from example row', async ({ page }) => {
-        const exampleRow = page.locator('.example-row');
+        const exampleRow = page.locator('#tableBody .example-row');
         const weightCell = exampleRow.locator('td:nth-child(4)');
         await weightCell.click();
         const input = weightCell.locator('input');
@@ -709,7 +709,7 @@ test.describe('Random List Manager E2E', () => {
     });
 
     test('should not create item if name field contains "Example"', async ({ page }) => {
-        const exampleRow = page.locator('.example-row');
+        const exampleRow = page.locator('#tableBody .example-row');
         const nameCell = exampleRow.locator('td:first-child');
         await nameCell.click();
         
@@ -724,7 +724,7 @@ test.describe('Random List Manager E2E', () => {
     });
 
     test('should preserve example row data between edits', async ({ page }) => {
-        const exampleRow = page.locator('.example-row');
+        const exampleRow = page.locator('#tableBody .example-row');
         
         // Edit name (with "Example" prefix to avoid creating item)
         const nameCell = exampleRow.locator('td:first-child');
@@ -930,6 +930,442 @@ Wine,drink,p.14,20`;
             await expect(page.locator('td:has-text("Dried Meat")')).toBeVisible();
         } finally {
             // Clean up
+            if (fs.existsSync(xlsxPath)) {
+                fs.unlinkSync(xlsxPath);
+            }
+        }
+    });
+
+    test('should display legend table with example row', async ({ page }) => {
+        // Legend table should be visible
+        await expect(page.locator('.legend-table')).toBeVisible();
+        
+        // Legend title should be visible
+        await expect(page.locator('.legend-title')).toHaveText('Legend');
+        
+        // Legend table should have correct headers
+        await expect(page.locator('.legend-table th:nth-child(1)')).toHaveText('Acronym');
+        await expect(page.locator('.legend-table th:nth-child(2)')).toHaveText('Full Name');
+        
+        // Example row should be visible
+        const exampleRow = page.locator('.legend-table .example-row');
+        await expect(exampleRow).toBeVisible();
+        await expect(exampleRow.locator('td:nth-child(1)')).toContainText('HP');
+        await expect(exampleRow.locator('td:nth-child(2)')).toContainText('Health Points');
+    });
+
+    test('should add legend entry by editing example row', async ({ page }) => {
+        // Click on acronym cell in legend example row
+        const exampleRow = page.locator('.legend-table .example-row');
+        const acronymCell = exampleRow.locator('td:nth-child(1)');
+        await acronymCell.click();
+        
+        // Edit the acronym
+        const input = acronymCell.locator('input');
+        await input.waitFor({ state: 'visible' });
+        await input.fill('STR');
+        await input.press('Enter');
+        
+        // Wait for entry to be created
+        await page.waitForTimeout(200);
+        
+        // Check that the new entry was created
+        const rows = page.locator('.legend-table tbody tr');
+        const count = await rows.count();
+        // Should have example row + at least one new entry
+        expect(count).toBeGreaterThan(1);
+        
+        // New entry should be visible (not example text)
+        await expect(page.locator('.legend-table td:has-text("STR")')).toBeVisible();
+    });
+
+    test('should delete legend entry', async ({ page }) => {
+        // First add a legend entry
+        const exampleRow = page.locator('.legend-table .example-row');
+        const acronymCell = exampleRow.locator('td:nth-child(1)');
+        await acronymCell.click();
+        const input = acronymCell.locator('input');
+        await input.fill('DEX');
+        await input.press('Enter');
+        
+        // Wait for entry to be created
+        await expect(page.locator('.legend-table td:has-text("DEX")')).toBeVisible();
+        
+        // Find and click delete button for this entry
+        const legendRow = page.locator('.legend-table tr:has-text("DEX")').first();
+        const deleteBtn = legendRow.locator('.btn-delete');
+        await deleteBtn.click();
+        
+        // Entry should be removed
+        await expect(page.locator('.legend-table tr:has-text("DEX")')).toHaveCount(0);
+    });
+
+    test('should persist legend data after page reload', async ({ page }) => {
+        // Add a legend entry
+        const exampleRow = page.locator('.legend-table .example-row');
+        const acronymCell = exampleRow.locator('td:nth-child(1)');
+        await acronymCell.click();
+        const input = acronymCell.locator('input');
+        await input.fill('WIS');
+        await input.press('Enter');
+        
+        // Wait for entry to be created
+        await page.waitForTimeout(200);
+        
+        // Verify it's visible
+        await expect(page.locator('.legend-table td:has-text("WIS")')).toBeVisible();
+        
+        // Reload page
+        await page.reload();
+        
+        // Legend entry should still be there
+        await expect(page.locator('.legend-table td:has-text("WIS")')).toBeVisible();
+    });
+
+    test('should include legend in JSON export', async ({ page }) => {
+        // Add a legend entry
+        const exampleRow = page.locator('.legend-table .example-row');
+        const acronymCell = exampleRow.locator('td:nth-child(1)');
+        await acronymCell.click();
+        const input = acronymCell.locator('input');
+        await input.fill('INT');
+        await input.press('Enter');
+        
+        // Wait for entry to be created
+        await page.waitForTimeout(200);
+        
+        // Wait for legend to be visible
+        await expect(page.locator('.legend-table tr:not(.example-row) td[data-field="acronym"]:has-text("INT")')).toBeVisible();
+        
+        // Set up download listener
+        const downloadPromise = page.waitForEvent('download');
+        
+        // Open tools menu and export JSON
+        await page.click('#toolsBtn');
+        await page.click('#exportJSON');
+        
+        // Wait for download
+        const download = await downloadPromise;
+        const downloadPath = path.join(__dirname, '../..', await download.suggestedFilename());
+        await download.saveAs(downloadPath);
+        
+        try {
+            // Read and verify exported JSON
+            const exportedContent = fs.readFileSync(downloadPath, 'utf-8');
+            const exportedData = JSON.parse(exportedContent);
+            
+            // Should have both items and legend keys
+            expect(exportedData).toHaveProperty('items');
+            expect(exportedData).toHaveProperty('legend');
+            
+            // Legend should contain our entry
+            expect(Array.isArray(exportedData.legend)).toBe(true);
+            const hasIntEntry = exportedData.legend.some(
+                l => l.acronym === 'INT'
+            );
+            expect(hasIntEntry).toBe(true);
+        } finally {
+            // Clean up
+            if (fs.existsSync(downloadPath)) {
+                fs.unlinkSync(downloadPath);
+            }
+        }
+    });
+
+    test('should import legend from JSON file', async ({ page }) => {
+        // Create test JSON file with legend
+        const testData = {
+            items: [
+                { name: 'Magic Sword', tags: 'weapon', reference: 'p.50', weight: 30 }
+            ],
+            legend: [
+                { acronym: 'MP', fullName: 'Magic Points' },
+                { acronym: 'AC', fullName: 'Armor Class' }
+            ]
+        };
+        
+        const jsonPath = path.join(__dirname, '../..', 'test-with-legend.json');
+        fs.writeFileSync(jsonPath, JSON.stringify(testData, null, 2));
+        
+        try {
+            // Set the file input and trigger import
+            const fileInput = page.locator('#importFileInput');
+            await fileInput.setInputFiles(jsonPath);
+            
+            // Wait for import to complete
+            await page.waitForSelector('[data-tab^="tab_"]:has-text("test-with-legend")', { timeout: 10000 });
+            
+            // Verify legend entries were imported
+            await expect(page.locator('.legend-table td:has-text("MP")')).toBeVisible();
+            await expect(page.locator('.legend-table td:has-text("Magic Points")')).toBeVisible();
+            await expect(page.locator('.legend-table td:has-text("AC")')).toBeVisible();
+            await expect(page.locator('.legend-table td:has-text("Armor Class")')).toBeVisible();
+        } finally {
+            // Clean up
+            if (fs.existsSync(jsonPath)) {
+                fs.unlinkSync(jsonPath);
+            }
+        }
+    });
+
+    test('should handle CSV with quoted values and legend section', async ({ page }) => {
+        // Create a CSV with quoted values containing commas and a legend section
+        const csvContent = `name,tags,reference,weight
+"Item 1","tag1, tag2","p.10",50
+"Item 2","tag3, tag4","p.20",75
+
+Legend
+acronym,fullName
+"XYZ","Test Value"
+"ABC","Another Test"`;
+        
+        const csvPath = path.join(__dirname, '../..', 'quoted-legend-test.csv');
+        fs.writeFileSync(csvPath, csvContent);
+        
+        try {
+            const fileInput = page.locator('#importFileInput');
+            await fileInput.setInputFiles(csvPath);
+            
+            // Wait for the tab to appear
+            await page.waitForSelector('[data-tab^="tab_"]:has-text("quoted-legend-test")', { timeout: 10000 });
+            
+            // Verify items are in main table
+            await expect(page.locator('#tableBody').locator('td:has-text("Item 1")')).toBeVisible();
+            await expect(page.locator('#tableBody').locator('td:has-text("Item 2")')).toBeVisible();
+            
+            // Verify legend entries are in legend table by checking specific cells
+            const legendTable = page.locator('.legend-table');
+            
+            // Check that legend rows exist by counting non-example rows
+            const legendDataRows = legendTable.locator('tbody tr:not(.example-row)');
+            await expect(legendDataRows).toHaveCount(2); // XYZ and ABC
+            
+            // Check first legend acronym cell
+            const xyzCell = legendTable.locator('td[data-field="acronym"]').filter({ hasText: 'XYZ' });
+            await expect(xyzCell).toHaveCount(1);
+            
+            // Check second legend acronym cell
+            const abcCell = legendTable.locator('td[data-field="acronym"]').filter({ hasText: 'ABC' });
+            await expect(abcCell).toHaveCount(1);
+            
+            // Verify legend acronyms are NOT in items table
+            const itemsTable = page.locator('#tableBody');
+            const xyzInItems = itemsTable.locator('td:has-text("XYZ")');
+            await expect(xyzInItems).toHaveCount(0);
+        } finally {
+            if (fs.existsSync(csvPath)) {
+                fs.unlinkSync(csvPath);
+            }
+        }
+    });
+
+    test('CSV export-import preserves legend data structure', async ({ page }) => {
+        // Create a JSON file with items and legend to import
+        const testData = {
+            items: [
+                { name: 'Test Item', tags: 'test', reference: 'p.1', weight: 25 }
+            ],
+            legend: [
+                { acronym: 'ABC', fullName: 'Alpha Beta Ceta' },
+                { acronym: 'XYZ', fullName: 'X Y Z' }
+            ]
+        };
+        
+        const jsonPath = path.join(__dirname, '../..', 'csv-preserve-test.json');
+        fs.writeFileSync(jsonPath, JSON.stringify(testData, null, 2));
+        
+        try {
+            // Import JSON to create tab
+            const fileInput = page.locator('#importFileInput');
+            await fileInput.setInputFiles(jsonPath);
+            await page.waitForSelector('[data-tab^="tab_"]:has-text("csv-preserve-test")', { timeout: 10000 });
+            
+            // Verify legend is in legend table
+            const legendTable = page.locator('.legend-table');
+            let abcCell = legendTable.locator('td[data-field="acronym"]').filter({ hasText: 'ABC' });
+            await expect(abcCell).toHaveCount(1);
+            
+            // Verify legend items are NOT in items table
+            const itemsTable = page.locator('#tableBody');
+            let abcInItems = itemsTable.locator('td:has-text("ABC")');
+            await expect(abcInItems).toHaveCount(0);
+        } finally {
+            if (fs.existsSync(jsonPath)) {
+                fs.unlinkSync(jsonPath);
+            }
+        }
+    });
+
+    test('should import JSON with items and legend together', async ({ page }) => {
+        // Create test JSON file with both items and legend
+        const testData = {
+            items: [
+                { name: 'Sword', tags: 'weapon', reference: 'p.50', weight: 60 },
+                { name: 'Shield', tags: 'armor', reference: 'p.55', weight: 80 }
+            ],
+            legend: [
+                { acronym: 'DMG', fullName: 'Damage' },
+                { acronym: 'ARM', fullName: 'Armor' },
+                { acronym: 'SPD', fullName: 'Speed' }
+            ]
+        };
+        
+        const jsonPath = path.join(__dirname, '../..', 'test-json-with-legend.json');
+        fs.writeFileSync(jsonPath, JSON.stringify(testData, null, 2));
+        
+        try {
+            const fileInput = page.locator('#importFileInput');
+            await fileInput.setInputFiles(jsonPath);
+            
+            // Wait for import to complete
+            await page.waitForSelector('[data-tab^="tab_"]:has-text("test-json-with-legend")', { timeout: 10000 });
+            
+            // Verify items are in main table
+            await expect(page.locator('#tableBody').locator('td:has-text("Sword")')).toBeVisible();
+            await expect(page.locator('#tableBody').locator('td:has-text("Shield")')).toBeVisible();
+            
+            // Verify legend entries are only in legend table
+            const legendTable = page.locator('.legend-table');
+            const dmgCell = legendTable.locator('td[data-field="acronym"]').filter({ hasText: 'DMG' });
+            const armCell = legendTable.locator('td[data-field="acronym"]').filter({ hasText: 'ARM' });
+            const spdCell = legendTable.locator('td[data-field="acronym"]').filter({ hasText: 'SPD' });
+            
+            await expect(dmgCell).toHaveCount(1);
+            await expect(armCell).toHaveCount(1);
+            await expect(spdCell).toHaveCount(1);
+            
+            // Verify legend acronyms are NOT in items table
+            const itemsTable = page.locator('#tableBody');
+            await expect(itemsTable.locator('td:has-text("DMG")')).toHaveCount(0);
+            await expect(itemsTable.locator('td:has-text("ARM")')).toHaveCount(0);
+            await expect(itemsTable.locator('td:has-text("SPD")')).toHaveCount(0);
+        } finally {
+            if (fs.existsSync(jsonPath)) {
+                fs.unlinkSync(jsonPath);
+            }
+        }
+    });
+
+    test('should import XLSX with legend sheet', async ({ page }) => {
+        // Create test XLSX file with items and legend sheets
+        const itemsData = [
+            { name: 'Dagger', tags: 'melee', reference: 'p.40', weight: 20 },
+            { name: 'Bow', tags: 'ranged', reference: 'p.42', weight: 30 }
+        ];
+        
+        const legendData = [
+            { acronym: 'STR', fullName: 'Strength' },
+            { acronym: 'CON', fullName: 'Constitution' },
+            { acronym: 'DEX', fullName: 'Dexterity' }
+        ];
+        
+        const wb = XLSX.utils.book_new();
+        const itemsSheet = XLSX.utils.json_to_sheet(itemsData);
+        const legendSheet = XLSX.utils.json_to_sheet(legendData);
+        
+        XLSX.utils.book_append_sheet(wb, itemsSheet, 'Items');
+        XLSX.utils.book_append_sheet(wb, legendSheet, 'Legend');
+        
+        const xlsxPath = path.join(__dirname, '../..', 'test-xlsx-with-legend.xlsx');
+        XLSX.writeFile(wb, xlsxPath);
+        
+        try {
+            const fileInput = page.locator('#importFileInput');
+            await fileInput.setInputFiles(xlsxPath);
+            
+            // Wait for import to complete
+            await page.waitForSelector('[data-tab^="tab_"]:has-text("test-xlsx-with-legend")', { timeout: 10000 });
+            
+            // Verify items are in main table
+            await expect(page.locator('#tableBody').locator('td:has-text("Dagger")')).toBeVisible();
+            await expect(page.locator('#tableBody').locator('td:has-text("Bow")')).toBeVisible();
+            
+            // Verify legend entries are only in legend table
+            const legendTable = page.locator('.legend-table');
+            const strCell = legendTable.locator('td[data-field="acronym"]').filter({ hasText: 'STR' });
+            const conCell = legendTable.locator('td[data-field="acronym"]').filter({ hasText: 'CON' });
+            const dexCell = legendTable.locator('td[data-field="acronym"]').filter({ hasText: 'DEX' });
+            
+            await expect(strCell).toHaveCount(1);
+            await expect(conCell).toHaveCount(1);
+            await expect(dexCell).toHaveCount(1);
+            
+            // Verify legend acronyms are NOT in items table
+            const itemsTable = page.locator('#tableBody');
+            await expect(itemsTable.locator('td:has-text("STR")')).toHaveCount(0);
+            await expect(itemsTable.locator('td:has-text("CON")')).toHaveCount(0);
+            await expect(itemsTable.locator('td:has-text("DEX")')).toHaveCount(0);
+        } finally {
+            if (fs.existsSync(xlsxPath)) {
+                fs.unlinkSync(xlsxPath);
+            }
+        }
+    });
+
+    test('should import JSON with only items (no legend)', async ({ page }) => {
+        // Verify JSON import works when there's no legend data
+        const testData = {
+            items: [
+                { name: 'Potion', tags: 'consumable', reference: 'p.30', weight: 10 },
+                { name: 'Scroll', tags: 'magical', reference: 'p.31', weight: 5 }
+            ]
+        };
+        
+        const jsonPath = path.join(__dirname, '../..', 'test-json-no-legend.json');
+        fs.writeFileSync(jsonPath, JSON.stringify(testData, null, 2));
+        
+        try {
+            const fileInput = page.locator('#importFileInput');
+            await fileInput.setInputFiles(jsonPath);
+            
+            // Wait for import to complete
+            await page.waitForSelector('[data-tab^="tab_"]:has-text("test-json-no-legend")', { timeout: 10000 });
+            
+            // Verify items are in main table
+            await expect(page.locator('#tableBody').locator('td:has-text("Potion")')).toBeVisible();
+            await expect(page.locator('#tableBody').locator('td:has-text("Scroll")')).toBeVisible();
+            
+            // Verify legend table is empty (only example row)
+            const legendTable = page.locator('.legend-table');
+            const legendDataRows = legendTable.locator('tbody tr:not(.example-row)');
+            await expect(legendDataRows).toHaveCount(0);
+        } finally {
+            if (fs.existsSync(jsonPath)) {
+                fs.unlinkSync(jsonPath);
+            }
+        }
+    });
+
+    test('should import XLSX with only items sheet (no legend)', async ({ page }) => {
+        // Verify XLSX import works when there's only an items sheet
+        const itemsData = [
+            { name: 'Hammer', tags: 'weapon', reference: 'p.45', weight: 50 },
+            { name: 'Torch', tags: 'light', reference: 'p.46', weight: 15 }
+        ];
+        
+        const wb = XLSX.utils.book_new();
+        const itemsSheet = XLSX.utils.json_to_sheet(itemsData);
+        XLSX.utils.book_append_sheet(wb, itemsSheet, 'Items');
+        
+        const xlsxPath = path.join(__dirname, '../..', 'test-xlsx-no-legend.xlsx');
+        XLSX.writeFile(wb, xlsxPath);
+        
+        try {
+            const fileInput = page.locator('#importFileInput');
+            await fileInput.setInputFiles(xlsxPath);
+            
+            // Wait for import to complete
+            await page.waitForSelector('[data-tab^="tab_"]:has-text("test-xlsx-no-legend")', { timeout: 10000 });
+            
+            // Verify items are in main table
+            await expect(page.locator('#tableBody').locator('td:has-text("Hammer")')).toBeVisible();
+            await expect(page.locator('#tableBody').locator('td:has-text("Torch")')).toBeVisible();
+            
+            // Verify legend table is empty (only example row)
+            const legendTable = page.locator('.legend-table');
+            const legendDataRows = legendTable.locator('tbody tr:not(.example-row)');
+            await expect(legendDataRows).toHaveCount(0);
+        } finally {
             if (fs.existsSync(xlsxPath)) {
                 fs.unlinkSync(xlsxPath);
             }

@@ -18,6 +18,7 @@
     "/^node -c src/ui\\.js && echo \"✓ Syntax OK\"$/": {
       "approve": true,
       "matchCommandLine": true
-    }
+    },
+    "timeout": true
   }
 }
