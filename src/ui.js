@@ -18,8 +18,7 @@ let data = {
 export const UI = {
     init() {
         this.bindEvents();
-        this.switchTab('items');
-        this.renderList();
+        this.switchTab('items'); // This calls renderTagCloud and renderList
     },
 
     bindEvents() {
@@ -174,6 +173,7 @@ export const UI = {
 
     renderList() {
         const body = document.getElementById('tableBody');
+        const allItems = data[currentTab];
         const filtered = this.getFilteredList();
         const nameHeader = document.getElementById('tableNameHeader');
         
@@ -181,16 +181,19 @@ export const UI = {
         const tabLabel = currentTab.charAt(0).toUpperCase() + currentTab.slice(1).slice(0, -1); // Remove 's'
         nameHeader.textContent = tabLabel;
         
-        // Always show example row at the bottom
-        const itemsHTML = filtered.map((item, index) => `
-            <tr data-item-index="${index}">
+        // Render filtered items but preserve original indices for operations
+        const itemsToShow = selectedTags.size === 0 ? allItems : filtered;
+        const itemsHTML = itemsToShow.map((item) => {
+            const originalIndex = allItems.indexOf(item);
+            return `
+            <tr data-item-index="${originalIndex}">
                 <td class="editable" data-field="name">${item.name}</td>
                 <td class="editable" data-field="tags">${item.tags || ''}</td>
                 <td class="editable" data-field="reference">${item.reference || ''}</td>
                 <td class="editable" data-field="weight">${item.weight || 1}</td>
-                <td><button class="btn-delete" data-index="${index}">×</button></td>
+                <td><button class="btn-delete" data-index="${originalIndex}">×</button></td>
             </tr>
-        `).join('');
+        `}).join('');
         
         const exampleRowHTML = `
             <tr class="example-row">
@@ -282,7 +285,8 @@ export const UI = {
         
         // Add autocomplete for tags field
         if (fieldName === 'tags') {
-            const datalistId = 'tags-datalist-' + Date.now();\n            input.setAttribute('list', datalistId);
+            const datalistId = 'tags-datalist-' + Date.now();
+            input.setAttribute('list', datalistId);
             
             const datalist = document.createElement('datalist');
             datalist.id = datalistId;

@@ -73,24 +73,5 @@
     </div>
         
     <script type="module" src="src/ui.js"></script>
-        
-    <script type="module">
-        import { DiceEngine } from './src/logic.js';
-        
-        // UI Logic lives here
-        const rollBtn = document.getElementById('rollBtn');
-        const resultDisplay = document.getElementById('result');
-
-        rollBtn.addEventListener('click', () => {
-            // 1. Get data from your state (assume 'data' is loaded)
-            const list = data[currentTab]; 
-            // 2. Use logic engine
-            const item = DiceEngine.pickWeightedItem(list);
-            if (item) {
-                const finalString = DiceEngine.parseDice(item.name);
-                resultDisplay.innerText = finalString;
-            }
-        });
-    </script>
 </body>
 </html>

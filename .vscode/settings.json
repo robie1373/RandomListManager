@@ -1,0 +1,19 @@
+{
+  "chat.tools.terminal.autoApprove": {
+    "pkill": true,
+    "npx live-server": true,
+    "npx playwright": true,
+    "/^node test-debug\\.js$/": {
+      "approve": true,
+      "matchCommandLine": true
+    },
+    "/^node -c src/ui\\.js$/": {
+      "approve": true,
+      "matchCommandLine": true
+    },
+    "/^node -c src/ui\\.js && echo \"Syntax OK\"$/": {
+      "approve": true,
+      "matchCommandLine": true
+    }
+  }
+}
