@@ -59,6 +59,11 @@ export const UI = {
         this.renderList();
     },
 
+    renderTagCloud() {
+        // Placeholder for tag cloud functionality
+        // This would render a cloud of tags for filtering
+    },
+
     handleRoll() {
         const list = this.getFilteredList();
         const selectedItem = DiceEngine.pickWeightedItem(list);
@@ -143,6 +148,11 @@ export const UI = {
             btn.innerText = '✅ Copied!';
             setTimeout(() => btn.innerText = originalText, 1500);
         });
+    },
+
+    addToHistory(result) {
+        // Placeholder for history tracking functionality
+        rollHistory.push(result);
     }
 };
 

@@ -49,13 +49,37 @@ test.describe('Random List Manager E2E', () => {
         await expect(copyBtn).toBeVisible();
     });
 
-    test.skip('should persist data after page reload', async ({ page }) => {
-        await page.fill('#simpleInput', 'Persistent Item');
-        await page.click('.btn-add');
+    test('should persist data after page reload', async ({ page }) => {
+        const input = page.locator('#simpleInput');
+        const addButton = page.locator('.btn-add');
         
+        // Add item
+        await input.fill('Persistent Item');
+        await addButton.click();
+        
+        // Wait for the item to appear in the table
+        const tableCell = page.locator('td:has-text("Persistent Item")');
+        await expect(tableCell).toBeVisible();
+        
+        // Verify data is in localStorage before reload
+        const storageData = await page.evaluate(() => {
+            return localStorage.getItem('myList_v1.8.2_items');
+        });
+        console.log('Storage before reload:', storageData);
+        
+        // Reload the page
         await page.reload();
         
-        const tableCell = page.locator('td:has-text("Persistent Item")');
+        // Wait for page to fully load after reload
+        await page.waitForLoadState('domcontentloaded');
+        
+        // Verify data is still in localStorage after reload
+        const storageDataAfterReload = await page.evaluate(() => {
+            return localStorage.getItem('myList_v1.8.2_items');
+        });
+        console.log('Storage after reload:', storageDataAfterReload);
+        
+        // Item should still be visible after reload
         await expect(tableCell).toBeVisible();
     });
 });
