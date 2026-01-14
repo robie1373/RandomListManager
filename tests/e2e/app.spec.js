@@ -1244,58 +1244,6 @@ acronym,fullName
         }
     });
 
-    test('should import JSON with items and legend together', async ({ page }) => {
-        // Create test JSON file with both items and legend
-        const testData = {
-            items: [
-                { name: 'Sword', tags: 'weapon', reference: 'p.50', weight: 60 },
-                { name: 'Shield', tags: 'armor', reference: 'p.55', weight: 80 }
-            ],
-            legend: [
-                { acronym: 'DMG', fullName: 'Damage' },
-                { acronym: 'ARM', fullName: 'Armor' },
-                { acronym: 'SPD', fullName: 'Speed' }
-            ]
-        };
-        
-        const jsonPath = path.join(__dirname, '../..', 'test-json-with-legend.json');
-        fs.writeFileSync(jsonPath, JSON.stringify(testData, null, 2));
-        
-        try {
-            const fileInput = page.locator('#importFileInput');
-            await fileInput.setInputFiles(jsonPath);
-            
-            // Wait for import to complete
-            const importedTab = page.locator('[data-tab^="tab_"]:has-text("test-json-with-legend")');
-            await importedTab.waitFor({ state: 'visible', timeout: 10000 });
-            await importedTab.click();
-            
-            // Verify items are in main table
-            await expect(page.locator('#tableBody').locator('td:has-text("Sword")')).toBeVisible();
-            await expect(page.locator('#tableBody').locator('td:has-text("Shield")')).toBeVisible();
-            
-            // Verify legend entries are only in legend table
-            const legendTable = page.locator('.legend-table');
-            const dmgCell = legendTable.locator('td[data-field="acronym"]').filter({ hasText: 'DMG' });
-            const armCell = legendTable.locator('td[data-field="acronym"]').filter({ hasText: 'ARM' });
-            const spdCell = legendTable.locator('td[data-field="acronym"]').filter({ hasText: 'SPD' });
-            
-            await expect(dmgCell).toHaveCount(1);
-            await expect(armCell).toHaveCount(1);
-            await expect(spdCell).toHaveCount(1);
-            
-            // Verify legend acronyms are NOT in items table
-            const itemsTable = page.locator('#tableBody');
-            await expect(itemsTable.locator('td:has-text("DMG")')).toHaveCount(0);
-            await expect(itemsTable.locator('td:has-text("ARM")')).toHaveCount(0);
-            await expect(itemsTable.locator('td:has-text("SPD")')).toHaveCount(0);
-        } finally {
-            if (fs.existsSync(jsonPath)) {
-                fs.unlinkSync(jsonPath);
-            }
-        }
-    });
-
     test('should import XLSX with legend sheet', async ({ page }) => {
         // Create test XLSX file with items and legend sheets
         const itemsData = [

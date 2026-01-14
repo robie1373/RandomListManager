@@ -488,6 +488,19 @@ export const UI = {
         data[currentTab].push(newItem);
         input.value = '';
         this.renderList();
+        
+        // Focus on tags field of newly created item and select text
+        setTimeout(() => {
+            const tableBody = document.getElementById('tableBody');
+            const rows = tableBody.querySelectorAll('tr:not(.example-row)');
+            if (rows.length > 0) {
+                const newRow = rows[rows.length - 1];
+                const tagsCell = newRow.querySelector('td[data-field="tags"]');
+                if (tagsCell) {
+                    tagsCell.click(); // This triggers editCell
+                }
+            }
+        }, 0);
     },
 
     deleteItem(index) {
