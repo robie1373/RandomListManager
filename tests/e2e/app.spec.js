@@ -130,6 +130,75 @@ test.describe('Random List Manager E2E', () => {
         await expect(copyBtn).toBeVisible();
     });
 
+    test('should include reference in roll result when present', async ({ page }) => {
+        // Add item with a reference
+        const exampleRow = page.locator('#tableBody .example-row');
+        const nameCell = exampleRow.locator('td:first-child');
+        await nameCell.click();
+        const nameInput = nameCell.locator('input');
+        await nameInput.fill('Magic Sword 2d6');
+        await nameInput.press('Tab');
+        
+        // Skip tags field
+        const tagsCell = exampleRow.locator('td:nth-child(2)');
+        const tagsInput = tagsCell.locator('input');
+        await tagsInput.press('Tab');
+        
+        // Add reference
+        const refCell = exampleRow.locator('td:nth-child(3)');
+        const refInput = refCell.locator('input');
+        await refInput.fill('p.42');
+        await refInput.press('Enter');
+        
+        // Roll and check result includes reference
+        await page.click('#rollBtn');
+        const result = page.locator('#result');
+        await expect(result).toContainText('(p.42)');
+    });
+
+    test('should handle tags case-insensitively', async ({ page }) => {
+        // Create test data via JSON to ensure consistent tag casing
+        const testData = {
+            items: [
+                { name: 'Item 1', tags: 'Weapon', reference: '', weight: 10 },
+                { name: 'Item 2', tags: 'weapon', reference: '', weight: 10 },
+                { name: 'Item 3', tags: 'WEAPON', reference: '', weight: 10 }
+            ]
+        };
+        const jsonPath = path.join(__dirname, '../..', 'case-insensitive-test.json');
+        fs.writeFileSync(jsonPath, JSON.stringify(testData, null, 2));
+        
+        try {
+            const fileInput = page.locator('#importFileInput');
+            await fileInput.setInputFiles(jsonPath);
+            const importedTab = page.locator('[data-tab^="tab_"]:has-text("case-insensitive-test")');
+            await importedTab.waitFor({ state: 'visible', timeout: 10000 });
+            await importedTab.click();
+            
+            // Wait for data to load
+            await expect(page.locator('#tableBody td:has-text("Item 1")')).toBeVisible();
+            
+            // Check that only one "weapon" tag appears in cloud (case-insensitive)
+            const tagCloud = page.locator('#tagCloud');
+            const weaponTag = tagCloud.locator('.tag-btn');
+            await expect(weaponTag).toHaveCount(1);
+            
+            // Verify all items are shown before filtering
+            await expect(page.locator('tbody tr:not(.example-row)')).toHaveCount(3);
+            
+            // Click the tag to filter
+            await weaponTag.click();
+            await page.waitForTimeout(100);
+            
+            // All 3 items should still be visible (case-insensitive filtering)
+            await expect(page.locator('tbody tr:not(.example-row)')).toHaveCount(3);
+        } finally {
+            if (fs.existsSync(jsonPath)) {
+                fs.unlinkSync(jsonPath);
+            }
+        }
+    });
+
     test('should persist data after page reload', async ({ page }) => {
         // Add item
         await addItemViaExampleRow(page, 'Persistent Item');
@@ -1512,5 +1581,116 @@ acronym,fullName
             }
         }
     });
-});
 
+    test('should show roll log collapsed by default', async ({ page }) => {
+        const rollLogContainer = page.locator('#rollLogContainer');
+        await expect(rollLogContainer).toHaveClass(/collapsed/);
+        
+        const toggleBtn = page.locator('#rollLogToggle');
+        await expect(toggleBtn).toContainText('Show Roll Log');
+    });
+
+    test('should toggle roll log visibility', async ({ page }) => {
+        const rollLogContainer = page.locator('#rollLogContainer');
+        const toggleBtn = page.locator('#rollLogToggle');
+        
+        // Initially collapsed
+        await expect(rollLogContainer).toHaveClass(/collapsed/);
+        
+        // Click to expand
+        await toggleBtn.click();
+        await expect(rollLogContainer).not.toHaveClass(/collapsed/);
+        await expect(toggleBtn).toContainText('Hide Roll Log');
+        
+        // Click to collapse
+        await toggleBtn.click();
+        await expect(rollLogContainer).toHaveClass(/collapsed/);
+        await expect(toggleBtn).toContainText('Show Roll Log');
+    });
+
+    test('should add roll results to log', async ({ page }) => {
+        await addItemViaExampleRow(page, 'Test Item');
+        
+        // Expand roll log
+        await page.locator('#rollLogToggle').click();
+        
+        // Roll multiple times
+        await page.click('#rollBtn');
+        await page.waitForTimeout(100);
+        await page.click('#rollBtn');
+        await page.waitForTimeout(100);
+        await page.click('#rollBtn');
+        
+        // Check that rolls appear in the log
+        const logEntries = page.locator('.roll-log-entry');
+        await expect(logEntries).toHaveCount(3);
+        
+        // Verify each entry has result and timestamp
+        const firstEntry = logEntries.first();
+        await expect(firstEntry.locator('.roll-log-result')).not.toBeEmpty();
+        await expect(firstEntry.locator('.roll-log-time')).not.toBeEmpty();
+    });
+
+    test('should maintain separate roll logs per tab', async ({ page }) => {
+        // Add item and roll on Items tab
+        await addItemViaExampleRow(page, 'Items Item');
+        await page.click('#rollBtn');
+        
+        // Switch to Weapons tab
+        await page.locator('#tab-weapons').click();
+        await addItemViaExampleRow(page, 'Weapons Item');
+        await page.click('#rollBtn');
+        await page.click('#rollBtn');
+        
+        // Expand log on Weapons tab
+        await page.locator('#rollLogToggle').click();
+        const weaponsLogEntries = page.locator('.roll-log-entry');
+        await expect(weaponsLogEntries).toHaveCount(2);
+        
+        // Switch back to Items tab
+        await page.locator('#tab-items').click();
+        const itemsLogEntries = page.locator('.roll-log-entry');
+        await expect(itemsLogEntries).toHaveCount(1);
+    });
+
+    test('should clear roll log for current tab only', async ({ page }) => {
+        await addItemViaExampleRow(page, 'Test Item');
+        
+        // Roll a few times
+        await page.click('#rollBtn');
+        await page.click('#rollBtn');
+        
+        // Expand log and verify entries
+        await page.locator('#rollLogToggle').click();
+        await expect(page.locator('.roll-log-entry')).toHaveCount(2);
+        
+        // Clear log
+        page.once('dialog', dialog => dialog.accept());
+        await page.locator('#clearRollLog').click();
+        
+        // Verify log is empty
+        await expect(page.locator('.roll-log-empty')).toBeVisible();
+        await expect(page.locator('.roll-log-entry')).toHaveCount(0);
+    });
+
+    test('should persist roll log after page reload', async ({ page }) => {
+        await addItemViaExampleRow(page, 'Persistent Roll Item');
+        
+        // Roll twice
+        await page.click('#rollBtn');
+        await page.waitForTimeout(100);
+        await page.click('#rollBtn');
+        
+        // Expand and verify 2 entries
+        await page.locator('#rollLogToggle').click();
+        await expect(page.locator('.roll-log-entry')).toHaveCount(2);
+        
+        // Reload page
+        await page.reload();
+        await page.waitForLoadState('domcontentloaded');
+        
+        // Expand log and verify entries still exist
+        await page.locator('#rollLogToggle').click();
+        await expect(page.locator('.roll-log-entry')).toHaveCount(2);
+    });
+});

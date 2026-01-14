@@ -3,10 +3,11 @@ import { DiceEngine } from './logic.js';
 // --- Application State ---
 const STORAGE_KEY = 'myList_v1.10.0_';
 const TABS_KEY = 'myList_tabs_v1.10.0';
+const ROLL_HISTORY_KEY = 'myList_rollHistory_v1.10.0_';
 let currentTab = 'items';
 let filterLogic = 'OR';
 let selectedTags = new Set();
-let rollHistory = [];
+let rollHistory = {}; // Per-tab roll history
 let pendingImport = null;
 
 const colorsPalette = ['#cb4b16', '#6c71c4', '#859900', '#2aa198', '#dc322f', '#b58900'];
@@ -23,6 +24,7 @@ let legendData = {};
 tabs.forEach(tab => {
     data[tab.id] = JSON.parse(localStorage.getItem(STORAGE_KEY + tab.id)) || [];
     legendData[tab.id] = JSON.parse(localStorage.getItem(STORAGE_KEY + 'legend_' + tab.id)) || [];
+    rollHistory[tab.id] = JSON.parse(localStorage.getItem(ROLL_HISTORY_KEY + tab.id)) || [];
 });
 
 // --- Core UI Functions ---
@@ -121,6 +123,7 @@ export const UI = {
         tabs.push(newTab);
         data[id] = [];
         legendData[id] = [];
+        rollHistory[id] = [];
         
         this.saveTabs();
         localStorage.setItem(STORAGE_KEY + id, JSON.stringify([]));
@@ -146,6 +149,10 @@ export const UI = {
         // Main Action Buttons
         document.getElementById('rollBtn').addEventListener('click', () => this.handleRoll());
         document.getElementById('copyBtn').addEventListener('click', () => this.copyToClipboard());
+
+        // Roll log toggle and clear
+        document.getElementById('rollLogToggle').addEventListener('click', () => this.toggleRollLog());
+        document.getElementById('clearRollLog').addEventListener('click', () => this.clearRollLog());
 
         // Tools Menu
         const toolsBtn = document.getElementById('toolsBtn');
@@ -284,42 +291,50 @@ export const UI = {
         
         this.renderTagCloud();
         this.renderList();
+        this.renderRollLog();
     },
 
     renderTagCloud() {
         const tagCloudEl = document.getElementById('tagCloud');
         if (!tagCloudEl) return;
         
-        // Extract all unique tags from current tab's data
-        const allTags = new Set();
+        // Extract all unique tags from current tab's data (case-insensitive)
+        const allTagsMap = new Map(); // lowercase -> display case
         data[currentTab].forEach(item => {
             if (item.tags) {
                 const tags = item.tags.split(',').map(t => t.trim()).filter(t => t);
-                tags.forEach(tag => allTags.add(tag));
+                tags.forEach(tag => {
+                    const lowerTag = tag.toLowerCase();
+                    if (!allTagsMap.has(lowerTag)) {
+                        allTagsMap.set(lowerTag, tag);
+                    }
+                });
             }
         });
         
         // Clear existing tags
         tagCloudEl.innerHTML = '';
         
-        if (allTags.size === 0) {
+        if (allTagsMap.size === 0) {
             tagCloudEl.innerHTML = '<span class="no-tags">No tags available. Add tags to items to enable filtering.</span>';
             return;
         }
         
         // Create tag buttons
-        const sortedTags = Array.from(allTags).sort();
-        sortedTags.forEach(tag => {
+        const sortedTags = Array.from(allTagsMap.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+        sortedTags.forEach(([lowerTag, displayTag]) => {
             const tagBtn = document.createElement('button');
             tagBtn.className = 'tag-btn';
-            tagBtn.textContent = tag;
-            tagBtn.dataset.tag = tag;
+            // Display in sentence case: first letter uppercase, rest lowercase
+            const sentenceCase = lowerTag.charAt(0).toUpperCase() + lowerTag.slice(1);
+            tagBtn.textContent = sentenceCase;
+            tagBtn.dataset.tag = lowerTag;
             
-            if (selectedTags.has(tag)) {
+            if (selectedTags.has(lowerTag)) {
                 tagBtn.classList.add('selected');
             }
             
-            tagBtn.addEventListener('click', () => this.toggleTag(tag));
+            tagBtn.addEventListener('click', () => this.toggleTag(lowerTag));
             tagCloudEl.appendChild(tagBtn);
         });
     },
@@ -339,7 +354,7 @@ export const UI = {
         const selectedItem = DiceEngine.pickWeightedItem(list);
         
         if (selectedItem) {
-            const rawName = selectedItem.ref ? `${selectedItem.name} (${selectedItem.ref})` : selectedItem.name;
+            const rawName = selectedItem.reference ? `${selectedItem.name} (${selectedItem.reference})` : selectedItem.name;
             const resultText = DiceEngine.parseDice(rawName);
             
             const resultEl = document.getElementById('result');
@@ -347,6 +362,7 @@ export const UI = {
             
             document.getElementById('copyBtn').classList.remove('hidden');
             this.addToHistory(resultText);
+            this.renderRollLog();
         }
     },
 
@@ -487,8 +503,54 @@ export const UI = {
     },
 
     addToHistory(result) {
-        // Placeholder for history tracking functionality
-        rollHistory.push(result);
+        if (!rollHistory[currentTab]) {
+            rollHistory[currentTab] = [];
+        }
+        const timestamp = new Date().toLocaleString();
+        rollHistory[currentTab].unshift({ result, timestamp });
+        
+        // Keep only last 50 rolls per tab
+        if (rollHistory[currentTab].length > 50) {
+            rollHistory[currentTab] = rollHistory[currentTab].slice(0, 50);
+        }
+        
+        localStorage.setItem(ROLL_HISTORY_KEY + currentTab, JSON.stringify(rollHistory[currentTab]));
+    },
+
+    toggleRollLog() {
+        const logContainer = document.getElementById('rollLogContainer');
+        const toggleBtn = document.getElementById('rollLogToggle');
+        const isCollapsed = logContainer.classList.toggle('collapsed');
+        toggleBtn.textContent = isCollapsed ? '▶ Show Roll Log' : '▼ Hide Roll Log';
+    },
+
+    clearRollLog() {
+        if (!rollHistory[currentTab]) return;
+        
+        if (confirm('Clear all roll history for this tab?')) {
+            rollHistory[currentTab] = [];
+            localStorage.setItem(ROLL_HISTORY_KEY + currentTab, JSON.stringify([]));
+            this.renderRollLog();
+        }
+    },
+
+    renderRollLog() {
+        const logList = document.getElementById('rollLogList');
+        const history = rollHistory[currentTab] || [];
+        
+        if (history.length === 0) {
+            logList.innerHTML = '<div class="roll-log-empty">No rolls yet. Roll on the table to see history here.</div>';
+            return;
+        }
+        
+        const historyHTML = history.map(entry => `
+            <div class="roll-log-entry">
+                <span class="roll-log-result">${entry.result}</span>
+                <span class="roll-log-time">${entry.timestamp}</span>
+            </div>
+        `).join('');
+        
+        logList.innerHTML = historyHTML;
     },
 
     editCell(cell, row) {
