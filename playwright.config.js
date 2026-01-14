@@ -5,7 +5,7 @@ export default defineConfig({
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: 'html',
+  reporter: [['html', { open: 'never' }]],
   /* Shared settings for all the projects below. */
   use: {
     baseURL: 'http://localhost:5500',
@@ -30,5 +30,8 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000, // Give it 2 minutes if needed
   },
+
+  globalSetup: './playwright.setup.js',
 });
+
 

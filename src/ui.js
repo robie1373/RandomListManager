@@ -54,7 +54,25 @@ export const UI = {
         );
         
         // Contextual updates (headers, input visibility)
-        document.getElementById('navContext').innerText = tab;
+        const navContext = document.getElementById('navContext');
+        navContext.innerText = tab;
+        
+        // Update header and navbar background color to match tab color
+        const colorMap = {
+            'items': 'var(--orange)',
+            'weapons': 'var(--violet)',
+            'encounters': 'var(--green)'
+        };
+        const tabColor = colorMap[tab] || 'var(--cyan)';
+        navContext.style.backgroundColor = tabColor;
+        navContext.style.color = 'white';
+        
+        // Update navbar background color
+        const tabsContainer = document.querySelector('.tabs');
+        if (tabsContainer) {
+            tabsContainer.style.backgroundColor = tabColor;
+        }
+        
         this.renderTagCloud();
         this.renderList();
     },
