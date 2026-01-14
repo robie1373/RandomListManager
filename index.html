@@ -5,16 +5,44 @@
 </head>
 <body class="dark-mode">
     <div id="app">
+        <!-- Navigation Context -->
+        <div id="navContext">items</div>
+        
+        <!-- Tab Navigation -->
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="items">Items</button>
+            <button class="tab-btn" data-tab="weapons" id="tab-weapons">Weapons</button>
+            <button class="tab-btn" data-tab="encounters">Encounters</button>
+        </div>
+        
+        <!-- Input and Add Button -->
+        <div class="input-section">
+            <input id="simpleInput" type="text" placeholder="Enter item name and dice (e.g., Potion 2d4)">
+            <button class="btn-add">Add Item</button>
+        </div>
+        
+        <!-- Results Display -->
         <div id="resultWrapper">
             <div id="result">Ready to roll...</div>
             <button id="copyBtn" class="hidden">📋 Copy</button>
         </div>
         <button id="rollBtn" class="btn-random">🎲 Roll on Table</button>
-        </div>
-  
-  
-  
-  
+        
+        <!-- Items Table -->
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Tags</th>
+                    <th>Weight</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+            </tbody>
+        </table>
+    </div>
+        
         <script type="module" src="src/ui.js"></script>
 
 

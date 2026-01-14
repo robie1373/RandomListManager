@@ -36,6 +36,14 @@ export const UI = {
         document.querySelectorAll('.btn-add').forEach(btn => {
             btn.addEventListener('click', () => this.addItem());
         });
+        
+        // Delete Item Buttons (delegated)
+        document.getElementById('tableBody').addEventListener('click', (e) => {
+            if (e.target.classList.contains('btn-delete')) {
+                const index = parseInt(e.target.dataset.index);
+                this.deleteItem(index);
+            }
+        });
     },
 
     switchTab(tab) {
@@ -88,13 +96,43 @@ export const UI = {
         body.innerHTML = filtered.map((item, index) => `
             <tr>
                 <td>${item.name}</td>
-                <td>${item.tags}</td>
-                <td>${item.weight}</td>
+                <td>${item.tags || ''}</td>
+                <td>${item.weight || 1}</td>
                 <td><button class="btn-delete" data-index="${index}">×</button></td>
             </tr>
         `).join('');
 
         localStorage.setItem(STORAGE_KEY + currentTab, JSON.stringify(data[currentTab]));
+    },
+
+    addItem() {
+        const input = document.getElementById('simpleInput');
+        const itemName = input.value.trim();
+        
+        if (!itemName) return;
+        
+        const newItem = {
+            name: itemName,
+            tags: '',
+            weight: 1,
+            ref: ''
+        };
+        
+        data[currentTab].push(newItem);
+        input.value = '';
+        this.renderList();
+    },
+
+    deleteItem(index) {
+        const filtered = this.getFilteredList();
+        if (index >= 0 && index < filtered.length) {
+            const itemToDelete = filtered[index];
+            const actualIndex = data[currentTab].indexOf(itemToDelete);
+            if (actualIndex > -1) {
+                data[currentTab].splice(actualIndex, 1);
+                this.renderList();
+            }
+        }
     },
 
     copyToClipboard() {

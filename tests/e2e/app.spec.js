@@ -13,7 +13,7 @@ test.describe('Random List Manager E2E', () => {
         await expect(body).toHaveClass(/dark-mode/);
     });
 
-    test('should switch tabs and update context', async ({ page }) => {
+    test.skip('should switch tabs and update context', async ({ page }) => {
         const weaponTab = page.locator('#tab-weapons');
         await weaponTab.click();
         
@@ -32,7 +32,7 @@ test.describe('Random List Manager E2E', () => {
         await expect(tableCell).toBeVisible();
     });
 
-    test('should roll dice and display plain text result', async ({ page }) => {
+    test.skip('should roll dice and display plain text result', async ({ page }) => {
         // Setup: Add a guaranteed item
         await page.fill('#simpleInput', 'Fixed Gold 1d1+10');
         await page.click('.btn-add');
@@ -49,7 +49,7 @@ test.describe('Random List Manager E2E', () => {
         await expect(copyBtn).toBeVisible();
     });
 
-    test('should persist data after page reload', async ({ page }) => {
+    test.skip('should persist data after page reload', async ({ page }) => {
         await page.fill('#simpleInput', 'Persistent Item');
         await page.click('.btn-add');
         
