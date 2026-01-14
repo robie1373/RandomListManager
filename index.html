@@ -2,11 +2,51 @@
 <html lang="en">
 <head>
     <link rel="stylesheet" href="src/styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body class="dark-mode">
     <div id="app">
-        <!-- Navigation Context -->
-        <div id="navContext">items</div>
+        <!-- Navigation Context and Tools Menu -->
+        <div class="nav-header">
+            <div id="navContext">items</div>
+            <button id="toolsBtn" class="tools-btn">⚙️ Tools</button>
+        </div>
+        
+        <!-- Tools Menu Dropdown -->
+        <div id="toolsMenu" class="tools-menu hidden">
+            <div class="tools-menu-section">
+                <label class="tools-menu-item">
+                    <input type="checkbox" id="darkModeToggle" checked>
+                    <span>Dark Mode</span>
+                </label>
+            </div>
+            <div class="tools-menu-divider"></div>
+            <div class="tools-menu-section">
+                <button class="tools-menu-btn" id="exportCSV">📄 Export CSV</button>
+                <button class="tools-menu-btn" id="exportJSON">📋 Export JSON</button>
+                <button class="tools-menu-btn" id="exportXLSX">📊 Export XLSX</button>
+                <button class="tools-menu-btn" id="exportAllTabs">📦 Export All Tabs (JSON)</button>
+            </div>
+            <div class="tools-menu-divider"></div>
+            <div class="tools-menu-section">
+                <button class="tools-menu-btn" id="importData">📥 Import Data</button>
+                <input type="file" id="importFileInput" accept=".csv,.json,.xlsx" style="display: none;">
+            </div>
+            <div class="tools-menu-divider"></div>
+            <div class="tools-menu-section">
+                <button class="tools-menu-btn" id="deleteTab">🗑️ Delete Current Tab</button>
+            </div>
+        </div>
+
+        <!-- Inline prompts (no popups) -->
+        <div id="promptContainer" class="prompt-container hidden">
+            <div id="promptMessage" class="prompt-message"></div>
+            <div class="prompt-actions">
+                <button id="promptPrimary" class="prompt-btn primary"></button>
+                <button id="promptSecondary" class="prompt-btn"></button>
+                <button id="promptCancel" class="prompt-btn ghost">Cancel</button>
+            </div>
+        </div>
         
         <!-- Tab Navigation -->
         <div class="tabs">

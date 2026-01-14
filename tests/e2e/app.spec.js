@@ -25,6 +25,33 @@ test.describe('Random List Manager E2E', () => {
         const body = page.locator('body');
         await expect(body).toHaveClass(/dark-mode/);
     });
+    
+        test('should show tools menu with export all tabs action', async ({ page }) => {
+            await page.locator('#toolsBtn').click();
+            const toolsMenu = page.locator('#toolsMenu');
+            await expect(toolsMenu).toBeVisible();
+            await expect(toolsMenu.locator('#exportAllTabs')).toBeVisible();
+        });
+    
+        test('should delete current tab after confirmation', async ({ page }) => {
+            // Open tools and trigger delete
+            await page.locator('#toolsBtn').click();
+            await page.locator('#deleteTab').click();
+        
+            // Prompt should appear
+            const prompt = page.locator('#promptContainer');
+            await expect(prompt).toBeVisible();
+        
+            // Confirm delete
+            await page.locator('#promptPrimary').click();
+        
+            // Expect items tab removed and count reduced to 2 (excluding new-tab button)
+            await expect(page.locator('[data-tab="items"]')).toHaveCount(0);
+            await expect(page.locator('.tab-btn:not(.new-tab-btn)')).toHaveCount(2);
+        
+            // Nav context should switch to first remaining tab (weapons)
+            await expect(page.locator('#navContext')).toHaveText('weapons');
+        });
 
     test('should switch tabs and update context', async ({ page }) => {
         const weaponTab = page.locator('#tab-weapons');

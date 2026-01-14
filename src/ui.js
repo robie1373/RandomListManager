@@ -1,12 +1,15 @@
 import { DiceEngine } from './logic.js';
 
 // --- Application State ---
-const STORAGE_KEY = 'myList_v1.9.0_';
-const TABS_KEY = 'myList_tabs_v1.9.0';
+const STORAGE_KEY = 'myList_v1.10.0_';
+const TABS_KEY = 'myList_tabs_v1.10.0';
 let currentTab = 'items';
 let filterLogic = 'OR';
 let selectedTags = new Set();
 let rollHistory = [];
+let pendingImport = null;
+
+const colorsPalette = ['#cb4b16', '#6c71c4', '#859900', '#2aa198', '#dc322f', '#b58900'];
 
 // Initialize tabs structure
 let tabs = JSON.parse(localStorage.getItem(TABS_KEY)) || [
@@ -37,6 +40,7 @@ export const UI = {
             const btn = document.createElement('button');
             btn.className = 'tab-btn';
             btn.dataset.tab = tab.id;
+            btn.id = `tab-${tab.id}`;
             btn.textContent = tab.name;
             btn.addEventListener('click', () => this.switchTab(tab.id));
             
@@ -109,8 +113,7 @@ export const UI = {
 
     createNewTab() {
         const id = 'tab_' + Date.now();
-        const colors = ['#cb4b16', '#6c71c4', '#859900', '#2aa198', '#dc322f', '#b58900'];
-        const color = colors[tabs.length % colors.length];
+        const color = colorsPalette[tabs.length % colorsPalette.length];
         
         const newTab = { id, name: 'Tab Name (click to edit)', color };
         tabs.push(newTab);
@@ -139,6 +142,60 @@ export const UI = {
         // Main Action Buttons
         document.getElementById('rollBtn').addEventListener('click', () => this.handleRoll());
         document.getElementById('copyBtn').addEventListener('click', () => this.copyToClipboard());
+
+        // Tools Menu
+        const toolsBtn = document.getElementById('toolsBtn');
+        const toolsMenu = document.getElementById('toolsMenu');
+        toolsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toolsMenu.classList.toggle('hidden');
+        });
+
+        // Close menu when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!toolsMenu.contains(e.target) && !toolsBtn.contains(e.target)) {
+                toolsMenu.classList.add('hidden');
+            }
+        });
+
+        // Dark Mode Toggle
+        const darkModeToggle = document.getElementById('darkModeToggle');
+        darkModeToggle.addEventListener('change', () => this.toggleDarkMode());
+
+        // Export buttons
+        document.getElementById('exportCSV').addEventListener('click', () => {
+            this.exportData('csv');
+            toolsMenu.classList.add('hidden');
+        });
+        document.getElementById('exportJSON').addEventListener('click', () => {
+            this.exportData('json');
+            toolsMenu.classList.add('hidden');
+        });
+        document.getElementById('exportXLSX').addEventListener('click', () => {
+            this.exportData('xlsx');
+            toolsMenu.classList.add('hidden');
+        });
+        document.getElementById('exportAllTabs').addEventListener('click', () => {
+            this.exportAllTabs();
+            toolsMenu.classList.add('hidden');
+        });
+
+        // Delete tab
+        document.getElementById('deleteTab').addEventListener('click', () => {
+            this.promptDeleteTab();
+            toolsMenu.classList.add('hidden');
+        });
+
+        // Import button
+        const importFileInput = document.getElementById('importFileInput');
+        document.getElementById('importData').addEventListener('click', () => {
+            importFileInput.click();
+        });
+        importFileInput.addEventListener('change', (e) => {
+            this.importData(e.target.files[0]);
+            e.target.value = ''; // Reset input
+            toolsMenu.classList.add('hidden');
+        });
 
         // Add Item Button
         document.querySelectorAll('.btn-add').forEach(btn => {
@@ -194,7 +251,7 @@ export const UI = {
         
         // Contextual updates (headers, input visibility)
         const navContext = document.getElementById('navContext');
-        navContext.innerText = tabName;
+        navContext.innerText = tab;
         navContext.style.backgroundColor = tabColor;
         navContext.style.color = 'white';
         
@@ -331,6 +388,11 @@ export const UI = {
         const itemName = input.value.trim();
         
         if (!itemName) return;
+
+        if (!this.isNameUnique(itemName, currentTab)) {
+            this.showMessage('Name must be unique in this tab.');
+            return;
+        }
         
         const newItem = {
             name: itemName,
@@ -497,6 +559,12 @@ export const UI = {
                 
                 // Only create item if name is not empty or example text
                 if (newItem.name && !newItem.name.includes('Example')) {
+                    if (!this.isNameUnique(newItem.name, currentTab)) {
+                        this.showMessage('Name must be unique in this tab.');
+                        cell.classList.remove('editing');
+                        cell.innerText = 'Example ' + tabLabel;
+                        return;
+                    }
                     data[currentTab].push(newItem);
                     localStorage.setItem(STORAGE_KEY + currentTab, JSON.stringify(data[currentTab]));
                     this.renderTagCloud();
@@ -512,6 +580,20 @@ export const UI = {
                 // Update existing item
                 const actualIndex = data[currentTab].indexOf(item);
                 if (actualIndex > -1) {
+                    if (fieldName === 'name') {
+                        if (!newValue) {
+                            this.showMessage('Name cannot be empty.');
+                            cell.classList.remove('editing');
+                            cell.innerText = item.name;
+                            return;
+                        }
+                        if (!this.isNameUnique(newValue, currentTab, actualIndex)) {
+                            this.showMessage('Name must be unique in this tab.');
+                            cell.classList.remove('editing');
+                            cell.innerText = item.name;
+                            return;
+                        }
+                    }
                     data[currentTab][actualIndex][fieldName] = newValue;
                 }
                 
@@ -561,10 +643,317 @@ export const UI = {
                 }
             }
         });
+    },
+
+    toggleDarkMode() {
+        document.body.classList.toggle('dark-mode');
+        const isDark = document.body.classList.contains('dark-mode');
+        localStorage.setItem('darkMode', isDark);
+    },
+
+    showPrompt({ message, primaryText, secondaryText, onPrimary, onSecondary }) {
+        const container = document.getElementById('promptContainer');
+        const msgEl = document.getElementById('promptMessage');
+        const primaryBtn = document.getElementById('promptPrimary');
+        const secondaryBtn = document.getElementById('promptSecondary');
+        const cancelBtn = document.getElementById('promptCancel');
+        if (!container || !msgEl || !primaryBtn || !secondaryBtn || !cancelBtn) return;
+
+        msgEl.innerText = message;
+        primaryBtn.innerText = primaryText;
+        secondaryBtn.innerText = secondaryText || 'Append';
+
+        const hide = () => container.classList.add('hidden');
+
+        const clearHandlers = () => {
+            primaryBtn.onclick = null;
+            secondaryBtn.onclick = null;
+            cancelBtn.onclick = null;
+        };
+
+        primaryBtn.onclick = () => { clearHandlers(); hide(); onPrimary && onPrimary(); };
+        secondaryBtn.onclick = () => { clearHandlers(); hide(); onSecondary && onSecondary(); };
+        cancelBtn.onclick = () => { clearHandlers(); hide(); };
+
+        container.classList.remove('hidden');
+    },
+
+    exportData(format) {
+        const currentTabObj = tabs.find(t => t.id === currentTab);
+        const tabName = currentTabObj ? currentTabObj.name : currentTab;
+        const tableData = data[currentTab];
+
+        if (format === 'csv') {
+            const csv = this.convertToCSV(tableData);
+            this.downloadFile(csv, `${tabName}.csv`, 'text/csv');
+        } else if (format === 'json') {
+            const json = JSON.stringify(tableData, null, 2);
+            this.downloadFile(json, `${tabName}.json`, 'application/json');
+        } else if (format === 'xlsx') {
+            this.exportXLSX(tableData, tabName);
+        }
+    },
+
+    exportAllTabs() {
+        tabs.forEach(tab => {
+            const items = data[tab.id] || [];
+            const json = JSON.stringify(items, null, 2);
+            this.downloadFile(json, `${tab.name}.json`, 'application/json');
+        });
+        this.showMessage(`Exported ${tabs.length} tabs`);
+    },
+
+    convertToCSV(data) {
+        if (!data || data.length === 0) return '';
+        
+        const headers = ['name', 'tags', 'reference', 'weight'];
+        const csvRows = [];
+        
+        // Add header row
+        csvRows.push(headers.join(','));
+        
+        // Add data rows
+        data.forEach(item => {
+            const values = headers.map(header => {
+                const value = item[header] || '';
+                // Escape commas and quotes in CSV
+                const escaped = String(value).replace(/"/g, '""');
+                return `"${escaped}"`;
+            });
+            csvRows.push(values.join(','));
+        });
+        
+        return csvRows.join('\n');
+    },
+
+    exportXLSX(data, tabName) {
+        if (typeof XLSX === 'undefined') {
+            alert('XLSX library not loaded. Please refresh the page.');
+            return;
+        }
+
+        const worksheet = XLSX.utils.json_to_sheet(data);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, tabName.substring(0, 31));
+        XLSX.writeFile(workbook, `${tabName}.xlsx`);
+    },
+
+    downloadFile(content, filename, mimeType) {
+        const blob = new Blob([content], { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        link.click();
+        URL.revokeObjectURL(url);
+    },
+
+    async importData(file) {
+        if (!file) return;
+
+        const extension = file.name.split('.').pop().toLowerCase();
+        
+        try {
+            let importedData = [];
+            if (extension === 'json') {
+                const text = await file.text();
+                importedData = JSON.parse(text);
+            } else if (extension === 'csv') {
+                const text = await file.text();
+                importedData = this.parseCSV(text);
+            } else if (extension === 'xlsx') {
+                if (typeof XLSX === 'undefined') {
+                    console.error('XLSX library not loaded.');
+                    return;
+                }
+                const arrayBuffer = await file.arrayBuffer();
+                const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                importedData = XLSX.utils.sheet_to_json(firstSheet);
+            } else {
+                console.error('Unsupported file format.');
+                return;
+            }
+
+            this.handleImportConflict(file.name, importedData);
+        } catch (error) {
+            console.error('Import error:', error);
+        }
+    },
+
+    parseCSV(text) {
+        const lines = text.trim().split('\n');
+        if (lines.length < 2) return [];
+        
+        const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+        const data = [];
+        
+        for (let i = 1; i < lines.length; i++) {
+            const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+            const item = {};
+            headers.forEach((header, index) => {
+                item[header] = values[index] || '';
+            });
+            data.push(item);
+        }
+        
+        return data;
+    },
+
+    handleImportConflict(filename, importedData) {
+        const baseName = filename.replace(/\.(json|csv|xlsx)$/i, '') || 'Imported Tab';
+        const normalizedName = baseName.trim();
+
+        const normalizedData = this.normalizeImportedData(importedData);
+
+        const existing = tabs.find(t => t.name.toLowerCase() === normalizedName.toLowerCase());
+        if (!existing) {
+            this.createTabWithData(normalizedName, normalizedData);
+            return;
+        }
+
+        // Store pending import and show inline prompt
+        pendingImport = { name: normalizedName, data: normalizedData, tabId: existing.id };
+        this.showPrompt({
+            message: `Tab "${normalizedName}" already exists. Overwrite or append?`,
+            primaryText: 'Overwrite',
+            secondaryText: 'Append',
+            onPrimary: () => this.overwriteTabFromImport(),
+            onSecondary: () => this.appendTabFromImport()
+        });
+    },
+
+    normalizeImportedData(importedData) {
+        if (!Array.isArray(importedData)) return [];
+        // Map to expected shape and enforce unique names
+        const seen = new Set();
+        const result = [];
+        importedData.forEach(item => {
+            const name = (item.name || '').trim();
+            if (!name) return;
+            const key = name.toLowerCase();
+            if (seen.has(key)) return;
+            seen.add(key);
+            result.push({
+                name,
+                tags: item.tags || '',
+                reference: item.reference || '',
+                weight: Math.max(1, Math.min(100, parseInt(item.weight) || 1))
+            });
+        });
+        return result;
+    },
+
+    createTabWithData(name, items) {
+        const id = 'tab_' + Date.now();
+        const color = colorsPalette[tabs.length % colorsPalette.length];
+        const newTab = { id, name, color };
+        tabs.push(newTab);
+        data[id] = items;
+        this.saveTabs();
+        localStorage.setItem(STORAGE_KEY + id, JSON.stringify(items));
+        this.renderTabs();
+        this.switchTab(id);
+    },
+
+    overwriteTabFromImport() {
+        if (!pendingImport) return;
+        const { tabId, data: items } = pendingImport;
+        data[tabId] = items;
+        localStorage.setItem(STORAGE_KEY + tabId, JSON.stringify(items));
+        this.saveTabs();
+        this.renderTabs();
+        this.switchTab(tabId);
+        pendingImport = null;
+    },
+
+    appendTabFromImport() {
+        if (!pendingImport) return;
+        const { tabId, data: items } = pendingImport;
+        const existing = data[tabId] || [];
+        const merged = this.mergeUniqueByName(existing, items);
+        data[tabId] = merged;
+        localStorage.setItem(STORAGE_KEY + tabId, JSON.stringify(merged));
+        this.saveTabs();
+        this.renderTabs();
+        this.switchTab(tabId);
+        pendingImport = null;
+    },
+
+    promptDeleteTab() {
+        if (tabs.length <= 1) {
+            this.showMessage('Cannot delete the last tab.');
+            return;
+        }
+        const currentTabObj = tabs.find(t => t.id === currentTab);
+        const tabName = currentTabObj ? currentTabObj.name : currentTab;
+        this.showPrompt({
+            message: `Delete tab "${tabName}" and its data?`,
+            primaryText: 'Delete',
+            secondaryText: 'Keep',
+            onPrimary: () => this.deleteCurrentTab()
+        });
+    },
+
+    deleteCurrentTab() {
+        if (tabs.length <= 1) return;
+        const idx = tabs.findIndex(t => t.id === currentTab);
+        if (idx === -1) return;
+
+        const tabId = tabs[idx].id;
+        tabs.splice(idx, 1);
+        delete data[tabId];
+        localStorage.removeItem(STORAGE_KEY + tabId);
+        this.saveTabs();
+        this.renderTabs();
+        const nextTab = tabs[0] ? tabs[0].id : null;
+        if (nextTab) {
+            this.switchTab(nextTab);
+        }
+    },
+
+    mergeUniqueByName(listA, listB) {
+        const seen = new Set();
+        const combined = [...listA, ...listB];
+        const result = [];
+        combined.forEach(item => {
+            const key = (item.name || '').trim().toLowerCase();
+            if (!key || seen.has(key)) return;
+            seen.add(key);
+            result.push(item);
+        });
+        return result;
+    },
+
+    isNameUnique(name, tabId, skipIndex = -1) {
+        const list = data[tabId] || [];
+        const key = name.trim().toLowerCase();
+        return !list.some((item, idx) => idx !== skipIndex && (item.name || '').trim().toLowerCase() === key);
+    },
+
+    showMessage(message) {
+        const resultEl = document.getElementById('result');
+        if (!resultEl) return;
+        const original = resultEl.innerText;
+        resultEl.innerText = message;
+        setTimeout(() => {
+            resultEl.innerText = original;
+        }, 1500);
     }
 };
 
 // Initialize app if running in a browser
 if (typeof window !== 'undefined') {
-    window.addEventListener('DOMContentLoaded', () => UI.init());
+    window.addEventListener('DOMContentLoaded', () => {
+        // Restore dark mode preference
+        const savedDarkMode = localStorage.getItem('darkMode');
+        if (savedDarkMode !== null) {
+            const isDark = savedDarkMode === 'true';
+            document.body.classList.toggle('dark-mode', isDark);
+            const toggle = document.getElementById('darkModeToggle');
+            if (toggle) toggle.checked = isDark;
+        }
+        
+        UI.init();
+    });
 }
