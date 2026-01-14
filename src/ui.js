@@ -86,11 +86,6 @@ export const UI = {
                     btn.classList.toggle('active', btn.dataset.tab === currentTab);
                 });
                 
-                // Update nav context if this is the current tab
-                if (currentTab === tabId) {
-                    document.getElementById('navContext').innerText = tab.name;
-                }
-                
                 this.renderList();
             } else {
                 btnElement.textContent = tab.name;
@@ -197,6 +192,20 @@ export const UI = {
             toolsMenu.classList.add('hidden');
         });
 
+        // About button
+        document.getElementById('aboutBtn').addEventListener('click', () => {
+            this.showAbout();
+            toolsMenu.classList.add('hidden');
+        });
+        document.getElementById('closeAbout').addEventListener('click', () => {
+            this.hideAbout();
+        });
+        document.getElementById('aboutModal').addEventListener('click', (e) => {
+            if (e.target.id === 'aboutModal') {
+                this.hideAbout();
+            }
+        });
+
         // Import button
         const importFileInput = document.getElementById('importFileInput');
         document.getElementById('importData').addEventListener('click', () => {
@@ -276,12 +285,6 @@ export const UI = {
                 btn.style.backgroundColor = '';
             }
         });
-        
-        // Contextual updates (headers, input visibility)
-        const navContext = document.getElementById('navContext');
-        navContext.innerText = tabName;
-        navContext.style.backgroundColor = tabColor;
-        navContext.style.color = 'white';
         
         // Update navbar background color
         const tabsContainer = document.querySelector('.tabs');
@@ -408,7 +411,7 @@ export const UI = {
         const exampleRowHTML = `
             <tr class="example-row">
                 <td class="editable" data-field="name">Example ${tabLabel}</td>
-                <td class="editable" data-field="tags">example-tag</td>
+                <td class="editable" data-field="tags">Treasure, Cave</td>
                 <td class="editable" data-field="reference">Reference</td>
                 <td class="editable" data-field="weight">50</td>
                 <td><button class="btn-delete" disabled>×</button></td>
@@ -438,8 +441,8 @@ export const UI = {
         
         const exampleRowHTML = `
             <tr class="example-row">
-                <td class="editable" data-field="acronym">HP</td>
-                <td class="editable" data-field="fullName">Health Points</td>
+                <td class="editable" data-field="acronym">DBR</td>
+                <td class="editable" data-field="fullName">Dragonbane Rules</td>
                 <td><button class="btn-delete" disabled>×</button></td>
             </tr>
         `;
@@ -982,7 +985,7 @@ export const UI = {
                 });
                 
                 // Only create entry if acronym is not empty or example text
-                if (newLegend.acronym && !newLegend.acronym.includes('HP')) {
+                if (newLegend.acronym && !newLegend.acronym.includes('DBR')) {
                     if (!legendData[currentTab]) {
                         legendData[currentTab] = [];
                     }
@@ -1547,6 +1550,16 @@ export const UI = {
         setTimeout(() => {
             resultEl.innerText = original;
         }, 1500);
+    },
+
+    showAbout() {
+        const modal = document.getElementById('aboutModal');
+        modal.classList.remove('hidden');
+    },
+
+    hideAbout() {
+        const modal = document.getElementById('aboutModal');
+        modal.classList.add('hidden');
     }
 };
 

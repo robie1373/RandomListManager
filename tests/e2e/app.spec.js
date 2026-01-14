@@ -473,7 +473,7 @@ test.describe('Random List Manager E2E', () => {
         await expect(page.locator('#tableBody .example-row td:first-child')).toContainText('Example Item');
         
         // Should have example tag
-        await expect(page.locator('#tableBody .example-row td:nth-child(2)')).toContainText('example-tag');
+        await expect(page.locator('#tableBody .example-row td:nth-child(2)')).toContainText('Treasure, Cave');
         
         // Should have reference column
         await expect(page.locator('#tableBody .example-row td:nth-child(3)')).toContainText('Reference');
@@ -1058,8 +1058,8 @@ Wine,drink,p.14,20`;
         // Example row should be visible
         const exampleRow = page.locator('.legend-table .example-row');
         await expect(exampleRow).toBeVisible();
-        await expect(exampleRow.locator('td:nth-child(1)')).toContainText('HP');
-        await expect(exampleRow.locator('td:nth-child(2)')).toContainText('Health Points');
+        await expect(exampleRow.locator('td:nth-child(1)')).toContainText('DBR');
+        await expect(exampleRow.locator('td:nth-child(2)')).toContainText('Dragonbane Rules');
     });
 
     test('should add legend entry by editing example row', async ({ page }) => {

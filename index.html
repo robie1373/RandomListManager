@@ -1,16 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Random List Manager - Modern tool for RPG dice tables, legends, and weighted random selection">
+    <meta name="theme-color" content="#0284c7">
+    <title>Random List Manager</title>
     <link rel="stylesheet" href="src/styles.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body class="dark-mode">
     <div id="app">
-        <!-- Navigation Context and Tools Menu -->
-        <div class="nav-header">
-            <div id="navContext">items</div>
-            <button id="toolsBtn" class="tools-btn">⚙️ Tools</button>
-        </div>
+        <!-- Navigation Header -->
+        <header class="nav-header">
+            <button id="toolsBtn" class="tools-btn" aria-label="Tools menu">⚙️ Tools</button>
+        </header>
         
         <!-- Tools Menu Dropdown -->
         <div id="toolsMenu" class="tools-menu hidden">
@@ -36,10 +40,52 @@
             <div class="tools-menu-section">
                 <button class="tools-menu-btn" id="deleteTab">🗑️ Delete Current Tab</button>
             </div>
+            <div class="tools-menu-divider"></div>
+            <div class="tools-menu-section">
+                <button class="tools-menu-btn" id="aboutBtn">ℹ️ About</button>
+            </div>
+            <div class="tools-menu-divider"></div>
+            <div class="tools-menu-warning">
+                <strong>⚠️ Data Storage:</strong> Your data is stored locally in your browser. It will be lost if you clear browser data or switch devices. <strong>Regularly export your data</strong> to prevent loss.
+            </div>
         </div>
 
-        <!-- Inline prompts (no popups) -->
-        <div id="promptContainer" class="prompt-container hidden">
+        <!-- About Modal -->
+        <div id="aboutModal" class="modal hidden">
+            <div class="modal-content">
+                <button id="closeAbout" class="modal-close">✕</button>
+                <h2>About Random List Manager</h2>
+                <p>The Random List Manager is a versatile tool for game masters, writers, and creative professionals who need quick access to randomized content. Whether you're generating NPCs, rolling for encounters, or selecting story beats, this application provides a lightweight, browser-based solution.</p>
+                
+                <h3>Features</h3>
+                <ul>
+                    <li><strong>Multiple Tabs:</strong> Organize different random lists into separate tabs (Items, Weapons, Encounters, etc.)</li>
+                    <li><strong>Weighted Rolls:</strong> Assign weight values to control the probability of each result</li>
+                    <li><strong>Tag Filtering:</strong> Filter results using tags with OR/AND logic</li>
+                    <li><strong>Roll History:</strong> Track all rolls made on each tab with timestamps</li>
+                    <li><strong>Import/Export:</strong> Save and share your lists in CSV, JSON, or XLSX format</li>
+                    <li><strong>Dark Mode:</strong> Easy on the eyes for late-night gaming sessions</li>
+                </ul>
+                
+                <h3>How It Works</h3>
+                <p>All your data is stored locally in your browser using localStorage. This means your lists persist between sessions, but they are only available on this browser and device. To ensure you don't lose your data, regularly export your lists using the "Export All Tabs" feature.</p>
+                
+                <h3>Tips & Tricks</h3>
+                <ul>
+                    <li>Use weights to make rare encounters truly rare—a weight of 1 vs 100 creates significant probability differences</li>
+                    <li>Combine tags with AND logic to create nuanced filters (e.g., "magic" AND "rare" finds only magical rare items)</li>
+                    <li>Export your data after major updates to maintain backups across devices</li>
+                    <li>Use the roll log to track what you've already rolled and avoid repetition</li>
+                </ul>
+                
+                <p style="margin-top: 20px; font-style: italic; color: #999;">
+                    <strong>Version:</strong> 1.0.0 | Built with vanilla JavaScript | Data stays local, never shared
+                </p>
+            </div>
+        </div>
+        
+        <!-- Inline prompts -->
+        <div id="promptContainer" class="prompt-container hidden" role="alert">
             <div id="promptMessage" class="prompt-message"></div>
             <div class="prompt-actions">
                 <button id="promptPrimary" class="prompt-btn primary"></button>
@@ -49,9 +95,12 @@
         </div>
         
         <!-- Tab Navigation -->
-        <div class="tabs">
-            <!-- Tabs will be dynamically rendered by JavaScript -->
-        </div>
+        <nav class="tabs">
+            <!-- Tabs dynamically rendered by JavaScript -->
+        </nav>
+        
+        <!-- Main Content -->
+        <main class="main-content">
         
         <!-- Input and Add Button -->
         <div class="input-section" style="display: none;">
@@ -63,8 +112,8 @@
         <div id="resultWrapper">
             <div id="result">Ready to roll...</div>
             <button id="copyBtn" class="hidden">📋 Copy</button>
+            <button id="rollBtn" class="btn-random">🎲 Roll on Table</button>
         </div>
-        <button id="rollBtn" class="btn-random">🎲 Roll on Table</button>
         
         <!-- Roll Log -->
         <div id="rollLogContainer" class="roll-log-container collapsed">
@@ -139,6 +188,7 @@
                 <li><strong>Pro tip:</strong> Use difficulty level tags (e.g., "easy", "medium", "hard") combined with AND logic to ensure roll results match your party's level. For example, select both "potion" AND "easy" to get only easy-difficulty potions.</li>
             </ul>
         </div>
+        </main>
     </div>
         
     <script type="module" src="src/ui.js"></script>
