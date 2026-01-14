@@ -1,7 +1,7 @@
 import { DiceEngine } from './logic.js';
 
 // --- Application State ---
-const STORAGE_KEY = 'myList_v1.8.2_';
+const STORAGE_KEY = 'myList_v1.9.0_';
 let currentTab = 'items';
 let filterLogic = 'OR';
 let selectedTags = new Set();
