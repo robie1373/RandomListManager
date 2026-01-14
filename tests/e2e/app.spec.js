@@ -1,4 +1,11 @@
 import { test, expect } from '@playwright/test';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import XLSX from 'xlsx';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const APP_URL = 'http://localhost:5500'; // Adjust to your local server port
 
@@ -50,7 +57,7 @@ test.describe('Random List Manager E2E', () => {
             await expect(page.locator('.tab-btn:not(.new-tab-btn)')).toHaveCount(2);
         
             // Nav context should switch to first remaining tab (weapons)
-            await expect(page.locator('#navContext')).toHaveText('weapons');
+            await expect(page.locator('#navContext')).toHaveText('Weapons');
         });
 
     test('should switch tabs and update context', async ({ page }) => {
@@ -58,7 +65,7 @@ test.describe('Random List Manager E2E', () => {
         await weaponTab.click();
         
         await expect(weaponTab).toHaveClass(/active/);
-        await expect(page.locator('#navContext')).toHaveText('weapons');
+        await expect(page.locator('#navContext')).toHaveText('Weapons');
     });
 
     test('should add a new item and show it in the table', async ({ page }) => {
@@ -854,6 +861,79 @@ test.describe('Random List Manager E2E', () => {
         await expect(row.locator('td:nth-child(2)')).toContainText('armor');
         await expect(row.locator('td:nth-child(3)')).toContainText('p.45');
         await expect(row.locator('td:nth-child(4)')).toContainText('75');
+    });
+
+    test('should import CSV file and show filename as tab name in header', async ({ page }) => {
+        // Create test CSV file
+        const csvContent = `name,tags,reference,weight
+Ale,drink,p.12,30
+Mead,drink,p.13,40
+Wine,drink,p.14,20`;
+        
+        const csvPath = path.join(__dirname, '../..', 'test-booze.csv');
+        fs.writeFileSync(csvPath, csvContent);
+        
+        try {
+            // Set the file input and trigger import (no need to open menu)
+            const fileInput = page.locator('#importFileInput');
+            await fileInput.setInputFiles(csvPath);
+            
+            // Wait for import to complete and tab to be created
+            await page.waitForSelector('[data-tab^="tab_"]:has-text("test-booze")', { timeout: 10000 });
+            
+            // Verify tab name is shown in header (navContext)
+            const navContext = page.locator('#navContext');
+            await expect(navContext).toHaveText('test-booze');
+            
+            // Verify data was imported
+            await expect(page.locator('td:has-text("Ale")')).toBeVisible();
+            await expect(page.locator('td:has-text("Mead")')).toBeVisible();
+            await expect(page.locator('td:has-text("Wine")')).toBeVisible();
+        } finally {
+            // Clean up
+            if (fs.existsSync(csvPath)) {
+                fs.unlinkSync(csvPath);
+            }
+        }
+    });
+
+    test('should import XLSX file and show filename as tab name in header', async ({ page }) => {
+        // Create test XLSX file
+        const data = [
+            { name: 'Bread', tags: 'food', reference: 'p.20', weight: 25 },
+            { name: 'Cheese', tags: 'food', reference: 'p.21', weight: 35 },
+            { name: 'Dried Meat', tags: 'food', reference: 'p.22', weight: 45 }
+        ];
+        
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+        
+        const xlsxPath = path.join(__dirname, '../..', 'test-food.xlsx');
+        XLSX.writeFile(wb, xlsxPath);
+        
+        try {
+            // Set the file input and trigger import (no need to open menu)
+            const fileInput = page.locator('#importFileInput');
+            await fileInput.setInputFiles(xlsxPath);
+            
+            // Wait for import to complete and tab to be created
+            await page.waitForSelector('[data-tab^="tab_"]:has-text("test-food")', { timeout: 10000 });
+            
+            // Verify tab name is shown in header (navContext)
+            const navContext = page.locator('#navContext');
+            await expect(navContext).toHaveText('test-food');
+            
+            // Verify data was imported
+            await expect(page.locator('td:has-text("Bread")')).toBeVisible();
+            await expect(page.locator('td:has-text("Cheese")')).toBeVisible();
+            await expect(page.locator('td:has-text("Dried Meat")')).toBeVisible();
+        } finally {
+            // Clean up
+            if (fs.existsSync(xlsxPath)) {
+                fs.unlinkSync(xlsxPath);
+            }
+        }
     });
 });
 

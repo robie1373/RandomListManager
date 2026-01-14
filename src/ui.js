@@ -251,7 +251,7 @@ export const UI = {
         
         // Contextual updates (headers, input visibility)
         const navContext = document.getElementById('navContext');
-        navContext.innerText = tab;
+        navContext.innerText = tabName;
         navContext.style.backgroundColor = tabColor;
         navContext.style.color = 'white';
         
