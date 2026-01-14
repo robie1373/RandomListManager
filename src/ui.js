@@ -2,34 +2,143 @@ import { DiceEngine } from './logic.js';
 
 // --- Application State ---
 const STORAGE_KEY = 'myList_v1.9.0_';
+const TABS_KEY = 'myList_tabs_v1.9.0';
 let currentTab = 'items';
 let filterLogic = 'OR';
 let selectedTags = new Set();
 let rollHistory = [];
 
-let data = {
-    items: JSON.parse(localStorage.getItem(STORAGE_KEY + 'items')) || [],
-    encounters: JSON.parse(localStorage.getItem(STORAGE_KEY + 'encounters')) || [],
-    weapons: JSON.parse(localStorage.getItem(STORAGE_KEY + 'weapons')) || []
-};
+// Initialize tabs structure
+let tabs = JSON.parse(localStorage.getItem(TABS_KEY)) || [
+    { id: 'items', name: 'Items', color: '#cb4b16' },
+    { id: 'weapons', name: 'Weapons', color: '#6c71c4' },
+    { id: 'encounters', name: 'Encounters', color: '#859900' }
+];
+
+let data = {};
+tabs.forEach(tab => {
+    data[tab.id] = JSON.parse(localStorage.getItem(STORAGE_KEY + tab.id)) || [];
+});
 
 // --- Core UI Functions ---
 
 export const UI = {
     init() {
+        this.renderTabs();
         this.bindEvents();
-        this.switchTab('items'); // This calls renderTagCloud and renderList
+        this.switchTab(tabs[0].id); // This calls renderTagCloud and renderList
+    },
+
+    renderTabs() {
+        const tabsContainer = document.querySelector('.tabs');
+        tabsContainer.innerHTML = '';
+        
+        tabs.forEach(tab => {
+            const btn = document.createElement('button');
+            btn.className = 'tab-btn';
+            btn.dataset.tab = tab.id;
+            btn.textContent = tab.name;
+            btn.addEventListener('click', () => this.switchTab(tab.id));
+            
+            // Make tab name editable on double-click
+            btn.addEventListener('dblclick', (e) => {
+                e.stopPropagation();
+                this.editTabName(tab.id, btn);
+            });
+            
+            tabsContainer.appendChild(btn);
+        });
+        
+        // Add "New Tab" button
+        const newTabBtn = document.createElement('button');
+        newTabBtn.className = 'tab-btn new-tab-btn';
+        newTabBtn.textContent = '+ New Tab';
+        newTabBtn.addEventListener('click', () => this.createNewTab());
+        tabsContainer.appendChild(newTabBtn);
+    },
+
+    editTabName(tabId, btnElement) {
+        const tab = tabs.find(t => t.id === tabId);
+        if (!tab) return;
+        
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = tab.name;
+        input.className = 'tab-name-edit';
+        
+        const saveEdit = () => {
+            const newName = input.value.trim();
+            if (newName && newName !== tab.name) {
+                tab.name = newName;
+                this.saveTabs();
+                this.renderTabs();
+                
+                // Re-apply active class
+                document.querySelectorAll('.tab-btn').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.tab === currentTab);
+                });
+                
+                // Update nav context if this is the current tab
+                if (currentTab === tabId) {
+                    document.getElementById('navContext').innerText = tab.name;
+                }
+                
+                this.renderList();
+            } else {
+                btnElement.textContent = tab.name;
+            }
+        };
+        
+        input.addEventListener('blur', saveEdit);
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                saveEdit();
+            } else if (e.key === 'Escape') {
+                this.renderTabs();
+                document.querySelectorAll('.tab-btn').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.tab === currentTab);
+                });
+            }
+        });
+        
+        btnElement.textContent = '';
+        btnElement.appendChild(input);
+        input.focus();
+        input.select();
+    },
+
+    createNewTab() {
+        const id = 'tab_' + Date.now();
+        const colors = ['#cb4b16', '#6c71c4', '#859900', '#2aa198', '#dc322f', '#b58900'];
+        const color = colors[tabs.length % colors.length];
+        
+        const newTab = { id, name: 'Tab Name (click to edit)', color };
+        tabs.push(newTab);
+        data[id] = [];
+        
+        this.saveTabs();
+        localStorage.setItem(STORAGE_KEY + id, JSON.stringify([]));
+        
+        this.renderTabs();
+        this.switchTab(id);
+        
+        // Automatically open the tab for editing
+        setTimeout(() => {
+            const newTabBtn = document.querySelector(`[data-tab="${id}"]`);
+            if (newTabBtn) {
+                this.editTabName(id, newTabBtn);
+            }
+        }, 100);
+    },
+
+    saveTabs() {
+        localStorage.setItem(TABS_KEY, JSON.stringify(tabs));
     },
 
     bindEvents() {
         // Main Action Buttons
         document.getElementById('rollBtn').addEventListener('click', () => this.handleRoll());
         document.getElementById('copyBtn').addEventListener('click', () => this.copyToClipboard());
-        
-        // Tab Navigation
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => this.switchTab(e.target.dataset.tab));
-        });
 
         // Add Item Button
         document.querySelectorAll('.btn-add').forEach(btn => {
@@ -64,22 +173,28 @@ export const UI = {
 
     switchTab(tab) {
         currentTab = tab;
-        // Update CSS classes for active tabs
-        document.querySelectorAll('.tab-btn').forEach(btn => 
-            btn.classList.toggle('active', btn.dataset.tab === tab)
-        );
+        
+        // Find current tab metadata
+        const currentTabObj = tabs.find(t => t.id === tab);
+        const tabName = currentTabObj ? currentTabObj.name : tab;
+        const tabColor = currentTabObj ? currentTabObj.color : '#2aa198';
+        
+        // Update CSS classes for active tabs and apply color
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            const isActive = btn.dataset.tab === tab;
+            btn.classList.toggle('active', isActive);
+            
+            // Apply the tab's color to the active tab
+            if (isActive) {
+                btn.style.backgroundColor = tabColor;
+            } else {
+                btn.style.backgroundColor = '';
+            }
+        });
         
         // Contextual updates (headers, input visibility)
         const navContext = document.getElementById('navContext');
-        navContext.innerText = tab;
-        
-        // Update header and navbar background color to match tab color
-        const colorMap = {
-            'items': '#cb4b16',      // orange
-            'weapons': '#6c71c4',    // violet
-            'encounters': '#859900'  // green
-        };
-        const tabColor = colorMap[tab] || '#2aa198'; // cyan fallback
+        navContext.innerText = tabName;
         navContext.style.backgroundColor = tabColor;
         navContext.style.color = 'white';
         
@@ -177,8 +292,9 @@ export const UI = {
         const filtered = this.getFilteredList();
         const nameHeader = document.getElementById('tableNameHeader');
         
-        // Update header to reflect current tab
-        const tabLabel = currentTab.charAt(0).toUpperCase() + currentTab.slice(1).slice(0, -1); // Remove 's'
+        // Update header to reflect current tab name
+        const currentTabObj = tabs.find(t => t.id === currentTab);
+        const tabLabel = currentTabObj ? currentTabObj.name.replace(/s$/, '') : 'Item';
         nameHeader.textContent = tabLabel;
         
         // Render filtered items but preserve original indices for operations

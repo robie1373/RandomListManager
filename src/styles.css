@@ -117,17 +117,34 @@ td {
     font-weight: bold;
 }
 
-/* Tab-specific colors */
-.tab-btn[data-tab="items"].active {
-    background-color: var(--orange);
+/* New Tab Button */
+.tab-btn.new-tab-btn {
+    opacity: 0.7;
+    font-weight: normal;
+    margin-left: 10px;
 }
 
-.tab-btn[data-tab="weapons"].active {
-    background-color: var(--violet);
+.tab-btn.new-tab-btn:hover {
+    opacity: 1;
+    background-color: var(--cyan);
+    color: white;
 }
 
-.tab-btn[data-tab="encounters"].active {
-    background-color: var(--green);
+/* Tab Name Editing */
+.tab-name-edit {
+    width: 100%;
+    padding: 4px 8px;
+    background-color: var(--input-bg);
+    color: var(--text-main);
+    border: 2px solid var(--cyan);
+    border-radius: 4px;
+    font-size: 1rem;
+    font-family: inherit;
+}
+
+.tab-name-edit:focus {
+    outline: none;
+    border-color: var(--orange);
 }
 
 /* Input Section */
