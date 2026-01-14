@@ -1,0 +1,88 @@
+/* Color Palette & Variables */
+:root {
+    --base03: #002b36; --base02: #073642; --base01: #586e75;
+    --base00: #657b83; --base0: #839496; --base1: #93a1a1;
+    --base2: #eee8d5; --base3: #fdf6e3;
+    --yellow: #b58900; --orange: #cb4b16; --red: #dc322f;
+    --magenta: #d33682; --violet: #6c71c4; --blue: #268bd2;
+    --cyan: #2aa198; --green: #859900;
+
+    /* Theme Defaults (Light) */
+    --bg-body: var(--base3);
+    --bg-card: var(--base2);
+    --text-main: var(--base00);
+    --border: var(--base1);
+    --input-bg: var(--base3);
+}
+
+/* Dark Mode Overrides */
+body.dark-mode {
+    --bg-body: var(--base03);
+    --bg-card: var(--base02);
+    --text-main: var(--base1);
+    --border: var(--base01);
+    --input-bg: var(--base03);
+}
+
+/* Base Styles */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    background-color: var(--bg-body);
+    color: var(--text-main);
+    transition: background-color 0.3s, color 0.3s;
+}
+
+.container {
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* Component Styling */
+#resultWrapper {
+    border: 3px solid var(--cyan);
+    border-radius: 8px;
+    padding: 20px;
+    background: rgba(42, 161, 152, 0.1);
+    margin: 15px 0;
+    text-align: center;
+}
+
+#result {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--cyan);
+}
+
+.btn-random {
+    background: var(--blue);
+    color: white;
+    width: 100%;
+    font-size: 1.3rem;
+    padding: 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.hidden { display: none !important; }
+
+/* Table Styling */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+th {
+    text-align: left;
+    border-bottom: 2px solid var(--border);
+    padding: 10px;
+    color: var(--cyan);
+}
+
+td {
+    padding: 10px;
+    border-bottom: 1px solid var(--border);
+}
