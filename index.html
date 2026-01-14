@@ -19,6 +19,7 @@
     <div id="app">
         <!-- Navigation Header -->
         <header class="nav-header">
+            <h1 class="app-title">Random List Manager</h1>
             <button id="toolsBtn" class="tools-btn" aria-label="Tools menu">
                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M12 1v6m0 6v6"></path><path d="M4.22 4.22l4.24 4.24m6.08 0l4.24-4.24"></path><path d="M1 12h6m6 0h6"></path><path d="M4.22 19.78l4.24-4.24m6.08 0l4.24 4.24"></path></svg>
                 Tools
@@ -151,6 +152,9 @@
                         AND (all)
                     </label>
                 </div>
+                <button id="clearTagsBtn" class="clear-tags-btn" title="Clear all selected tags" disabled>
+                    Clear Tags
+                </button>
             </div>
             <div id="tagCloud" class="tag-cloud"></div>
         </div>

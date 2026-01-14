@@ -109,7 +109,14 @@ body {
     border-bottom: 1px solid rgba(0, 0, 0, 0.1);
 }
 
-
+.app-title {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #ffffff;
+    letter-spacing: -0.02em;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
 
 .tools-btn {
     padding: 8px 12px;
@@ -853,6 +860,35 @@ td.editable:hover:not(.example-row) {
     accent-color: var(--primary-600);
 }
 
+.clear-tags-btn {
+    padding: 6px 12px;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-elevated);
+    color: var(--text-primary);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.clear-tags-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background-color: var(--bg-elevated);
+    color: var(--text-muted);
+}
+
+.clear-tags-btn:not(:disabled):hover {
+    background-color: var(--danger-500);
+    color: white;
+    border-color: var(--danger-600);
+}
+
+.clear-tags-btn:not(:disabled):active {
+    transform: scale(0.98);
+}
+
 .tag-cloud {
     display: flex;
     flex-wrap: wrap;
@@ -1100,6 +1136,11 @@ td.editable:hover:not(.example-row) {
     .tag-cloud-header {
         flex-direction: column;
         align-items: flex-start;
+    }
+
+    .clear-tags-btn {
+        width: 100%;
+        margin-top: 8px;
     }
 
     .tag-match-mode {

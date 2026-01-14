@@ -1987,4 +1987,46 @@ acronym,fullName
         const content = await promptContainer.textContent();
         expect(content.toLowerCase()).toContain('delete');
     });
+
+    test('should show clear tags button that is disabled when no tags selected', async ({ page }) => {
+        // Clear tags button should be present
+        const clearTagsBtn = page.locator('#clearTagsBtn');
+        await expect(clearTagsBtn).toBeVisible();
+        
+        // Should be disabled initially (no tags selected)
+        await expect(clearTagsBtn).toBeDisabled();
+        
+        // Add an item with tags
+        await addItemViaExampleRow(page, 'Test Item');
+        
+        // Edit the tags cell to add a tag (column order: Name(0), Tags(1), Reference(2), Weight(3))
+        const tableBody = page.locator('#tableBody');
+        const itemRow = tableBody.locator('tr:not(.example-row)').first();
+        const tagsCell = itemRow.locator('td').nth(1); // Tags is column 1
+        await tagsCell.click();
+        const input = tagsCell.locator('input[type="text"]');
+        await input.waitFor({ state: 'visible' });
+        await input.fill('test-tag');
+        await input.press('Enter');
+        
+        // Wait for tag to appear in tag cloud
+        const tagBtn = page.locator('.tag-btn[data-tag="test-tag"]');
+        await expect(tagBtn).toBeVisible();
+        
+        // Click the tag to select it
+        await tagBtn.click();
+        await expect(tagBtn).toHaveClass(/selected/);
+        
+        // Clear tags button should now be enabled
+        await expect(clearTagsBtn).toBeEnabled();
+        
+        // Click clear tags button
+        await clearTagsBtn.click();
+        
+        // Tag should no longer be selected
+        await expect(tagBtn).not.toHaveClass(/selected/);
+        
+        // Button should be disabled again
+        await expect(clearTagsBtn).toBeDisabled();
+    });
 });

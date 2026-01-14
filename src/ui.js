@@ -281,6 +281,9 @@ export const UI = {
                 this.renderList();
             });
         });
+
+        // Clear tags button
+        document.getElementById('clearTagsBtn').addEventListener('click', () => this.clearAllTags());
     },
 
     switchTab(tab) {
@@ -309,6 +312,8 @@ export const UI = {
         const tagCloudEl = document.getElementById('tagCloud');
         if (!tagCloudEl) return;
         
+        const clearTagsBtn = document.getElementById('clearTagsBtn');
+        
         // Extract all unique tags from current tab's data (case-insensitive)
         const allTagsMap = new Map(); // lowercase -> display case
         data[currentTab].forEach(item => {
@@ -328,7 +333,13 @@ export const UI = {
         
         if (allTagsMap.size === 0) {
             tagCloudEl.innerHTML = '<span class="no-tags">No tags available. Add tags to items to enable filtering.</span>';
+            if (clearTagsBtn) clearTagsBtn.disabled = true;
             return;
+        }
+        
+        // Enable/disable clear button based on selected tags
+        if (clearTagsBtn) {
+            clearTagsBtn.disabled = selectedTags.size === 0;
         }
         
         // Create tag buttons
@@ -356,6 +367,12 @@ export const UI = {
         } else {
             selectedTags.add(tag);
         }
+        this.renderTagCloud();
+        this.renderList();
+    },
+
+    clearAllTags() {
+        selectedTags.clear();
         this.renderTagCloud();
         this.renderList();
     },
