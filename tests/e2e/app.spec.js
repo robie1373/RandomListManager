@@ -39,6 +39,45 @@ test.describe('Random List Manager E2E', () => {
             await expect(toolsMenu).toBeVisible();
             await expect(toolsMenu.locator('#exportAllTabs')).toBeVisible();
         });
+
+        test('should export current tab using tab name in filename', async ({ page }) => {
+            const itemsTab = page.locator('#tab-items');
+            await itemsTab.dblclick();
+            const editInput = page.locator('.tab-name-edit');
+            await editInput.fill('Loot Drops!');
+            await editInput.press('Enter');
+
+            await addItemViaExampleRow(page, 'Export Test Item');
+
+            await page.locator('#toolsBtn').click();
+            const [download] = await Promise.all([
+                page.waitForEvent('download'),
+                page.locator('#exportCSV').click()
+            ]);
+
+            expect(download.suggestedFilename()).toBe('Loot_Drops.csv');
+        });
+
+        test('should export all tabs using tab names in filenames', async ({ page }) => {
+            const weaponsTab = page.locator('#tab-weapons');
+            await weaponsTab.dblclick();
+            const editInput = page.locator('.tab-name-edit');
+            await editInput.fill('Shiny Weapons 2!');
+            await editInput.press('Enter');
+
+            const downloads = [];
+            page.on('download', d => downloads.push(d));
+
+            await page.locator('#toolsBtn').click();
+            await page.locator('#exportAllTabs').click();
+
+            await expect.poll(() => downloads.length).toBe(3);
+
+            const filenames = downloads.map(d => d.suggestedFilename()).sort();
+            expect(filenames).toContain('Items.json');
+            expect(filenames).toContain('Shiny_Weapons_2.json');
+            expect(filenames).toContain('Encounters.json');
+        });
     
         test('should delete current tab after confirmation', async ({ page }) => {
             // Open tools and trigger delete
@@ -1218,7 +1257,9 @@ acronym,fullName
             await fileInput.setInputFiles(jsonPath);
             
             // Wait for import to complete
-            await page.waitForSelector('[data-tab^="tab_"]:has-text("test-json-with-legend")', { timeout: 10000 });
+            const importedTab = page.locator('[data-tab^="tab_"]:has-text("test-json-with-legend")');
+            await importedTab.waitFor({ state: 'visible', timeout: 10000 });
+            await importedTab.click();
             
             // Verify items are in main table
             await expect(page.locator('#tableBody').locator('td:has-text("Sword")')).toBeVisible();
@@ -1368,6 +1409,106 @@ acronym,fullName
         } finally {
             if (fs.existsSync(xlsxPath)) {
                 fs.unlinkSync(xlsxPath);
+            }
+        }
+    });
+
+    test('should show tag autocomplete suggestions when editing tags field', async ({ page }) => {
+        // Seed data via JSON import to avoid example-row sequencing issues
+        const testData = {
+            items: [
+                { name: 'Item 1', tags: 'weapon, armor', reference: 'p.10', weight: 20 },
+                { name: 'Item 2', tags: 'weapon, magic', reference: 'p.11', weight: 30 }
+            ]
+        };
+        const jsonPath = path.join(__dirname, '../..', 'autocomplete-seed.json');
+        fs.writeFileSync(jsonPath, JSON.stringify(testData, null, 2));
+        
+        try {
+            const fileInput = page.locator('#importFileInput');
+            await fileInput.setInputFiles(jsonPath);
+            const importedTab = page.locator('[data-tab^="tab_"]:has-text("autocomplete-seed")');
+            await importedTab.waitFor({ state: 'visible', timeout: 10000 });
+            await importedTab.click();
+            
+            // Wait for data to load in the table and tab to be active
+            await expect(importedTab).toHaveClass(/active/);
+            await expect(page.locator('#tableBody td:has-text("Item 1")')).toBeVisible();
+            
+            // Edit the first item's tags to trigger autocomplete - use a non-example row
+            const firstDataRow = page.locator('#tableBody tr:not(.example-row)').first();
+            const tagsCell = firstDataRow.locator('td[data-field="tags"]');
+            await tagsCell.click();
+            const input = tagsCell.locator('input');
+            await input.waitFor({ state: 'visible' });
+            
+            // Start typing a tag that exists
+            await input.fill('wea');
+            
+            // Wait for autocomplete dropdown to appear
+            const dropdown = page.locator('.tag-autocomplete-container');
+            await expect(dropdown).toBeVisible();
+            
+            // Check that 'weapon' suggestion appears
+            const weaponSuggestion = dropdown.locator('text=weapon');
+            await expect(weaponSuggestion).toBeVisible();
+            
+            // Use arrow down to highlight the suggestion
+            await input.press('ArrowDown');
+            
+            // Use Tab to accept the suggestion
+            await input.press('Tab');
+            
+            // Verify the value was filled
+            await expect(input).toHaveValue('weapon');
+        } finally {
+            if (fs.existsSync(jsonPath)) {
+                fs.unlinkSync(jsonPath);
+            }
+        }
+    });
+
+    test('should accept tag suggestion with keyboard shortcut', async ({ page }) => {
+        // Seed data with a tag that should be suggested
+        const testData = {
+            items: [
+                { name: 'Tagged Item', tags: 'sword, shield', reference: 'p.20', weight: 25 }
+            ]
+        };
+        const jsonPath = path.join(__dirname, '../..', 'autocomplete-single.json');
+        fs.writeFileSync(jsonPath, JSON.stringify(testData, null, 2));
+        
+        try {
+            const fileInput = page.locator('#importFileInput');
+            await fileInput.setInputFiles(jsonPath);
+            await page.waitForSelector('[data-tab^="tab_"]:has-text("autocomplete-single")', { timeout: 10000 });
+            
+            // Edit the tags field to trigger autocomplete
+            const tagsCells = page.locator('#tableBody td[data-field="tags"]');
+            await tagsCells.first().click();
+            let input = tagsCells.first().locator('input');
+            await input.waitFor({ state: 'visible' });
+            
+            // Clear and start typing partial tag
+            await input.fill('');
+            await input.type('shi');
+            
+            // Wait for dropdown
+            const dropdown = page.locator('.tag-autocomplete-container');
+            await expect(dropdown).toBeVisible();
+            
+            // Should show 'shield' suggestion
+            const shieldSuggestion = dropdown.locator('text=shield');
+            await expect(shieldSuggestion).toBeVisible();
+            
+            // Select the first suggestion via Tab
+            await input.press('Tab');
+            
+            // Verify suggestion was accepted
+            await expect(input).toHaveValue('shield');
+        } finally {
+            if (fs.existsSync(jsonPath)) {
+                fs.unlinkSync(jsonPath);
             }
         }
     });

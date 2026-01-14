@@ -514,6 +514,12 @@ td.editing {
 }
 
 .help-text strong {
+
+.table-hint {
+    margin-top: 6px;
+    font-size: 0.85rem;
+    color: var(--base1);
+}
     color: var(--cyan);
 }
 
@@ -601,10 +607,21 @@ td.editing {
     font-size: 0.9rem;
 }
 
-/* Responsive adjustments */
-@media (max-width: 768px) {
-    .tables-container {
-        flex-direction: column;
+/* Tag Autocomplete Dropdown */
+.tag-autocomplete-container {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    max-width: 300px;
+}
+
+.tag-suggestion {
+    transition: background-color 0.15s, color 0.15s;
+}
+
+.tag-suggestion:hover {
+    background-color: #e67e22 !important;
+    color: #fff !important;
+}
+
     }
     
     .legend-wrapper {

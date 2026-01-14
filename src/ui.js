@@ -518,14 +518,8 @@ export const UI = {
             input.max = '100';
         }
         
-        // Add autocomplete for tags field
+        // Add enhanced autocomplete for tags field
         if (fieldName === 'tags') {
-            const datalistId = 'tags-datalist-' + Date.now();
-            input.setAttribute('list', datalistId);
-            
-            const datalist = document.createElement('datalist');
-            datalist.id = datalistId;
-            
             // Get all unique tags from current tab
             const allTags = new Set();
             data[currentTab].forEach(item => {
@@ -534,20 +528,162 @@ export const UI = {
                     tags.forEach(tag => allTags.add(tag));
                 }
             });
+            const availableTags = Array.from(allTags).sort();
             
-            // Create options for each tag
-            Array.from(allTags).sort().forEach(tag => {
-                const option = document.createElement('option');
-                option.value = tag;
-                datalist.appendChild(option);
+            // Create autocomplete dropdown
+            const dropdownContainer = document.createElement('div');
+            dropdownContainer.className = 'tag-autocomplete-container';
+            dropdownContainer.style.position = 'absolute';
+            dropdownContainer.style.display = 'none';
+            dropdownContainer.style.backgroundColor = '#2a2a2a';
+            dropdownContainer.style.border = '1px solid #666';
+            dropdownContainer.style.borderRadius = '4px';
+            dropdownContainer.style.maxHeight = '200px';
+            dropdownContainer.style.overflowY = 'auto';
+            dropdownContainer.style.zIndex = '1000';
+            dropdownContainer.style.minWidth = '150px';
+            
+            let selectedSuggestionIndex = -1;
+            let autocompleteHandled = false;
+            
+            const showSuggestions = (filter) => {
+                const filtered = availableTags.filter(tag => 
+                    tag.toLowerCase().includes(filter.toLowerCase())
+                );
+                
+                if (filtered.length === 0) {
+                    dropdownContainer.style.display = 'none';
+                    selectedSuggestionIndex = -1;
+                    return;
+                }
+                
+                dropdownContainer.innerHTML = '';
+                filtered.forEach((tag, index) => {
+                    const option = document.createElement('div');
+                    option.className = 'tag-suggestion';
+                    option.textContent = tag;
+                    option.style.padding = '8px 12px';
+                    option.style.cursor = 'pointer';
+                    option.style.color = '#ccc';
+                    
+                    option.addEventListener('mouseenter', () => {
+                        // Remove previous highlight
+                        document.querySelectorAll('.tag-suggestion').forEach(el => {
+                            el.style.backgroundColor = 'transparent';
+                            el.style.color = '#ccc';
+                        });
+                        // Highlight this one
+                        option.style.backgroundColor = '#e67e22';
+                        option.style.color = '#fff';
+                        selectedSuggestionIndex = index;
+                    });
+                    
+                    // Use mousedown to avoid input blur before we capture the click
+                    option.addEventListener('mousedown', (evt) => {
+                        evt.preventDefault();
+                        selectedSuggestionIndex = index;
+                        input.value = tag;
+                        hideSuggestions();
+                        input.focus();
+                    });
+                    option.addEventListener('click', () => {
+                        selectedSuggestionIndex = index;
+                        input.value = tag;
+                        hideSuggestions();
+                        input.focus();
+                    });
+                    
+                    dropdownContainer.appendChild(option);
+                });
+                
+                // Position dropdown below input
+                const rect = input.getBoundingClientRect();
+                dropdownContainer.style.display = 'block';
+                dropdownContainer.style.position = 'fixed';
+                dropdownContainer.style.top = (rect.bottom + 2) + 'px';
+                dropdownContainer.style.left = rect.left + 'px';
+                dropdownContainer.style.width = (rect.width - 2) + 'px';
+            };
+            
+            const hideSuggestions = () => {
+                dropdownContainer.style.display = 'none';
+                selectedSuggestionIndex = -1;
+            };
+            
+            // Input event for filtering suggestions
+            input.addEventListener('input', (e) => {
+                const filter = e.target.value.trim();
+                if (filter.length > 0) {
+                    showSuggestions(filter);
+                } else {
+                    hideSuggestions();
+                }
             });
             
-            document.body.appendChild(datalist);
+            // Store autocomplete handler on input so main keydown handler can check
+            input.handleAutocompleteKeydown = (e) => {
+                const suggestions = dropdownContainer.querySelectorAll('.tag-suggestion');
+                autocompleteHandled = false;
+                
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    if (suggestions.length > 0) {
+                        selectedSuggestionIndex = Math.min(selectedSuggestionIndex + 1, suggestions.length - 1);
+                        // Remove previous highlight
+                        suggestions.forEach(el => {
+                            el.style.backgroundColor = 'transparent';
+                            el.style.color = '#ccc';
+                        });
+                        // Highlight selected
+                        suggestions[selectedSuggestionIndex].style.backgroundColor = '#e67e22';
+                        suggestions[selectedSuggestionIndex].style.color = '#fff';
+                    }
+                    autocompleteHandled = true;
+                    return;
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    if (suggestions.length > 0) {
+                        selectedSuggestionIndex = Math.max(selectedSuggestionIndex - 1, -1);
+                        // Remove previous highlight
+                        suggestions.forEach(el => {
+                            el.style.backgroundColor = 'transparent';
+                            el.style.color = '#ccc';
+                        });
+                        // Highlight selected if valid
+                        if (selectedSuggestionIndex >= 0) {
+                            suggestions[selectedSuggestionIndex].style.backgroundColor = '#e67e22';
+                            suggestions[selectedSuggestionIndex].style.color = '#fff';
+                        }
+                    }
+                    autocompleteHandled = true;
+                    return;
+                } else if (e.key === 'Tab' && suggestions.length > 0) {
+                    e.preventDefault();
+                    // If none selected yet, pick the first
+                    if (selectedSuggestionIndex < 0) {
+                        selectedSuggestionIndex = 0;
+                    }
+                    const selectedTag = suggestions[selectedSuggestionIndex].textContent;
+                    input.value = selectedTag;
+                    hideSuggestions();
+                    autocompleteHandled = true;
+                    return;
+                }
+                
+                autocompleteHandled = false;
+            };
             
-            // Clean up datalist when input is removed
+            // Keyboard navigation for suggestions - called before main keydown handler
+            input.addEventListener('keydown', (e) => {
+                input.handleAutocompleteKeydown(e);
+            }, true); // Use capture phase to handle before main handler
+            
+            document.body.appendChild(dropdownContainer);
+            
+            // Clean up dropdown when input is removed
             const originalRemove = input.remove.bind(input);
             input.remove = () => {
-                datalist.remove();
+                dropdownContainer.remove();
                 originalRemove();
             };
         }
@@ -670,6 +806,13 @@ export const UI = {
         
         input.addEventListener('blur', saveEdit);
         input.addEventListener('keydown', (e) => {
+            // If an earlier handler (like tag autocomplete) already handled this key, skip
+            if (e.defaultPrevented) return;
+            if (input.handleAutocompleteKeydown) {
+                input.handleAutocompleteKeydown(e);
+                if (e.defaultPrevented) return;
+            }
+
             if (e.key === 'Enter') {
                 e.preventDefault();
                 saveEdit();
@@ -680,7 +823,6 @@ export const UI = {
                 cell.innerText = originalValue;
             } else if (e.key === 'Tab') {
                 e.preventDefault();
-                saveEdit();
                 
                 // Find next or previous editable cell
                 const cells = Array.from(row.querySelectorAll('td.editable'));
@@ -695,6 +837,14 @@ export const UI = {
                     nextCell = currentIndex < cells.length - 1 ? cells[currentIndex + 1] : null;
                 }
                 
+                // For example row, move focus without committing until the row is complete
+                if (isExampleRow && nextCell) {
+                    this.editCell(nextCell, row);
+                    return;
+                }
+                
+                // Otherwise save and move on
+                saveEdit();
                 if (nextCell) {
                     this.editCell(nextCell, row);
                 }
@@ -876,26 +1026,28 @@ export const UI = {
         const tabName = currentTabObj ? currentTabObj.name : currentTab;
         const tableData = data[currentTab];
         const legends = legendData[currentTab] || [];
+        const filenameBase = this.buildFilenameBase(tabName);
 
         if (format === 'csv') {
             const csv = this.convertToCSV(tableData);
             const legendCsv = this.convertLegendToCSV(legends);
             const combined = csv + '\n\nLegend\n' + legendCsv;
-            this.downloadFile(combined, `${tabName}.csv`, 'text/csv');
+            this.downloadFile(combined, `${filenameBase}.csv`, 'text/csv');
         } else if (format === 'json') {
             const exportObj = {
                 items: tableData,
                 legend: legends
             };
             const json = JSON.stringify(exportObj, null, 2);
-            this.downloadFile(json, `${tabName}.json`, 'application/json');
+            this.downloadFile(json, `${filenameBase}.json`, 'application/json');
         } else if (format === 'xlsx') {
             this.exportXLSX(tableData, legends, tabName);
         }
     },
 
-    exportAllTabs() {
-        tabs.forEach(tab => {
+    async exportAllTabs() {
+        for (let i = 0; i < tabs.length; i++) {
+            const tab = tabs[i];
             const items = data[tab.id] || [];
             const legends = legendData[tab.id] || [];
             const exportObj = {
@@ -903,8 +1055,14 @@ export const UI = {
                 legend: legends
             };
             const json = JSON.stringify(exportObj, null, 2);
-            this.downloadFile(json, `${tab.name}.json`, 'application/json');
-        });
+            const filenameBase = this.buildFilenameBase(tab.name);
+            this.downloadFile(json, `${filenameBase}.json`, 'application/json');
+            
+            // Small delay between downloads to prevent browser blocking
+            if (i < tabs.length - 1) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+        }
         this.showMessage(`Exported ${tabs.length} tabs`);
     },
 
@@ -971,7 +1129,17 @@ export const UI = {
             XLSX.utils.book_append_sheet(workbook, legendSheet, 'Legend');
         }
         
-        XLSX.writeFile(workbook, `${tabName}.xlsx`);
+        const filename = `${this.buildFilenameBase(tabName)}.xlsx`;
+        XLSX.writeFile(workbook, filename);
+    },
+
+    buildFilenameBase(name) {
+        const fallback = 'table';
+        const trimmed = (name || '').trim();
+        const sanitized = trimmed
+            ? trimmed.replace(/[^a-z0-9-_]+/gi, '_').replace(/^_+|_+$/g, '')
+            : '';
+        return sanitized || fallback;
     },
 
     downloadFile(content, filename, mimeType) {
