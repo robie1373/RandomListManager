@@ -10,13 +10,11 @@ let selectedTags = new Set();
 let rollHistory = {}; // Per-tab roll history
 let pendingImport = null;
 
-const colorsPalette = ['#cb4b16', '#6c71c4', '#859900', '#2aa198', '#dc322f', '#b58900'];
-
 // Initialize tabs structure
 let tabs = JSON.parse(localStorage.getItem(TABS_KEY)) || [
-    { id: 'items', name: 'Items', color: '#cb4b16' },
-    { id: 'weapons', name: 'Weapons', color: '#6c71c4' },
-    { id: 'encounters', name: 'Encounters', color: '#859900' }
+    { id: 'items', name: 'Items' },
+    { id: 'weapons', name: 'Weapons' },
+    { id: 'encounters', name: 'Encounters' }
 ];
 
 let data = {};
@@ -112,9 +110,8 @@ export const UI = {
 
     createNewTab() {
         const id = 'tab_' + Date.now();
-        const color = colorsPalette[tabs.length % colorsPalette.length];
         
-        const newTab = { id, name: 'Tab Name (click to edit)', color };
+        const newTab = { id, name: 'Tab Name (click to edit)' };
         tabs.push(newTab);
         data[id] = [];
         legendData[id] = [];
@@ -167,6 +164,18 @@ export const UI = {
         // Dark Mode Toggle
         const darkModeToggle = document.getElementById('darkModeToggle');
         darkModeToggle.addEventListener('change', () => this.toggleDarkMode());
+
+        // Add click handler to dark mode switch container for better UX
+        const switchContainer = document.querySelector('.switch-container');
+        if (switchContainer) {
+            switchContainer.addEventListener('click', (e) => {
+                // Don't toggle if clicking the labels
+                if (e.target.classList.contains('switch-label')) return;
+                darkModeToggle.checked = !darkModeToggle.checked;
+                darkModeToggle.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+        }
+
 
         // Export buttons
         document.getElementById('exportCSV').addEventListener('click', () => {
@@ -268,28 +277,18 @@ export const UI = {
     switchTab(tab) {
         currentTab = tab;
         
-        // Find current tab metadata
-        const currentTabObj = tabs.find(t => t.id === tab);
-        const tabName = currentTabObj ? currentTabObj.name : tab;
-        const tabColor = currentTabObj ? currentTabObj.color : '#2aa198';
-        
-        // Update CSS classes for active tabs and apply color
+        // Update CSS classes for active tabs
         document.querySelectorAll('.tab-btn').forEach(btn => {
             const isActive = btn.dataset.tab === tab;
             btn.classList.toggle('active', isActive);
-            
-            // Apply the tab's color to the active tab
-            if (isActive) {
-                btn.style.backgroundColor = tabColor;
-            } else {
-                btn.style.backgroundColor = '';
-            }
         });
         
-        // Update navbar background color
-        const tabsContainer = document.querySelector('.tabs');
-        if (tabsContainer) {
-            tabsContainer.style.backgroundColor = tabColor;
+        // Update the table header name
+        const currentTabObj = tabs.find(t => t.id === tab);
+        const tabName = currentTabObj ? currentTabObj.name : tab;
+        const tableNameHeader = document.getElementById('tableNameHeader');
+        if (tableNameHeader) {
+            tableNameHeader.textContent = tabName;
         }
         
         this.renderTagCloud();
@@ -530,11 +529,16 @@ export const UI = {
     clearRollLog() {
         if (!rollHistory[currentTab]) return;
         
-        if (confirm('Clear all roll history for this tab?')) {
-            rollHistory[currentTab] = [];
-            localStorage.setItem(ROLL_HISTORY_KEY + currentTab, JSON.stringify([]));
-            this.renderRollLog();
-        }
+        this.showPrompt({
+            message: 'Clear all roll history for this tab?',
+            primaryText: 'Clear',
+            secondaryText: 'Cancel',
+            onPrimary: () => {
+                rollHistory[currentTab] = [];
+                localStorage.setItem(ROLL_HISTORY_KEY + currentTab, JSON.stringify([]));
+                this.renderRollLog();
+            }
+        });
     },
 
     renderRollLog() {
@@ -1434,8 +1438,7 @@ export const UI = {
 
     createTabWithData(name, items, legends = []) {
         const id = 'tab_' + Date.now();
-        const color = colorsPalette[tabs.length % colorsPalette.length];
-        const newTab = { id, name, color };
+        const newTab = { id, name };
         tabs.push(newTab);
         data[id] = items;
         legendData[id] = legends;

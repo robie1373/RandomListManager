@@ -112,21 +112,24 @@ body {
 
 
 .tools-btn {
-    padding: 8px 16px;
-    background-color: rgba(255, 255, 255, 0.15);
+    padding: 8px 12px;
+    background-color: rgba(2, 132, 199, 0.15);
     color: white;
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    border: 1px solid var(--primary-300);
     border-radius: 8px;
     cursor: pointer;
     font-size: 0.95rem;
-    font-weight: 500;
+    font-weight: 600;
     transition: all 0.2s ease;
-    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
 }
 
 .tools-btn:hover {
-    background-color: rgba(255, 255, 255, 0.25);
-    border-color: rgba(255, 255, 255, 0.5);
+    background-color: rgba(2, 132, 199, 0.25);
+    border-color: var(--primary-400);
     transform: translateY(-1px);
 }
 
@@ -174,6 +177,7 @@ body {
 .tools-menu-item {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     padding: 12px 16px;
     cursor: pointer;
     transition: background-color 0.15s;
@@ -193,6 +197,111 @@ body {
     accent-color: var(--primary-600);
 }
 
+/* Switch Styles */
+.switch-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.switch-wrapper {
+    position: relative;
+    display: inline-flex;
+    gap: 0;
+    width: 80px;
+    height: 32px;
+    pointer-events: auto;
+    cursor: pointer;
+}
+
+.switch-input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    z-index: 10;
+    pointer-events: none;
+}
+
+.switch-slider {
+    position: relative;
+    display: block;
+    width: 50px;
+    height: 28px;
+    background-color: var(--gray-400);
+    border-radius: 14px;
+    transition: background-color 0.3s ease;
+    cursor: pointer;
+    pointer-events: auto;
+}
+
+.switch-slider::after {
+    content: '';
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    background-color: white;
+    border-radius: 50%;
+    top: 2px;
+    left: 2px;
+    transition: left 0.3s ease;
+}
+
+.switch-input:checked + .switch-slider {
+    background-color: var(--primary-600);
+}
+
+.switch-input:checked + .switch-slider::after {
+    left: 24px;
+}
+
+.switch-label {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    user-select: none;
+}
+
+.switch-label-text {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    user-select: none;
+}
+
+.switch-slider-pills {
+    position: relative;
+    display: flex;
+    width: 100%;
+    height: 100%;
+    background-color: var(--bg-elevated);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    transition: background-color 0.2s ease;
+    cursor: pointer;
+    pointer-events: auto;
+}
+
+.switch-slider-pills::before {
+    content: '';
+    position: absolute;
+    width: 36px;
+    height: 28px;
+    background-color: var(--primary-600);
+    border-radius: 14px;
+    top: 2px;
+    left: 2px;
+    transition: left 0.3s ease;
+    z-index: 2;
+}
+
+.switch-wrapper .switch-input:nth-of-type(2):checked ~ .switch-slider-pills::before {
+    left: 42px;
+}
+
 .tools-menu-btn {
     width: 100%;
     padding: 12px 16px;
@@ -204,6 +313,24 @@ body {
     font-size: 0.9rem;
     transition: background-color 0.15s;
     font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.menu-icon {
+    display: inline-block;
+    font-size: 1rem;
+}
+
+.icon {
+    width: 20px;
+    height: 20px;
+    display: inline-block;
+    vertical-align: middle;
+    stroke: currentColor;
+    flex-shrink: 0;
+    color: inherit;
 }
 
 .tools-menu-btn:hover {
@@ -282,10 +409,9 @@ body {
     position: absolute;
     top: 16px;
     right: 16px;
-    background: var(--bg-elevated);
+    background: transparent;
     border: none;
-    color: var(--text-primary);
-    font-size: 1.5rem;
+    color: var(--text-secondary);
     cursor: pointer;
     padding: 6px 10px;
     border-radius: 8px;
@@ -293,10 +419,12 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
+    width: 32px;
+    height: 32px;
 }
 
 .modal-close:hover {
-    background: var(--primary-100);
+    background: var(--bg-elevated);
     color: var(--primary-600);
 }
 
@@ -403,13 +531,14 @@ body {
 
 .tabs {
     display: flex;
-    gap: 8px;
+    gap: 4px;
     margin: 0;
     padding: 12px 24px;
-    border-bottom: 2px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
     background: var(--bg-surface);
     overflow-x: auto;
     scrollbar-width: thin;
+    align-items: center;
 }
 
 .tabs::-webkit-scrollbar {
@@ -426,40 +555,54 @@ body {
 }
 
 .tab-btn {
-    padding: 10px 16px;
+    padding: 8px 14px;
     background-color: transparent;
-    color: var(--text-primary);
-    border: none;
-    border-bottom: 2px solid transparent;
+    color: var(--text-secondary);
+    border: 1px solid transparent;
+    border-radius: 6px 6px 0 0;
     cursor: pointer;
     font-size: 0.95rem;
-    font-weight: 700;
+    font-weight: 600;
     transition: all 0.2s ease;
     white-space: nowrap;
-    opacity: 0.85;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    position: relative;
 }
 
 .tab-btn:hover {
     color: var(--text-primary);
-    border-bottom-color: var(--primary-400);
-    opacity: 0.95;
+    background-color: var(--bg-elevated);
 }
 
 .tab-btn.active {
     color: var(--primary-600);
-    border-bottom-color: var(--primary-600);
-    font-weight: 800;
-    opacity: 1;
+    background-color: transparent;
+    font-weight: 700;
+    border-bottom: 2px solid var(--primary-600);
+    padding-bottom: 6px;
+}
+
+.tab-btn.active::after {
+    content: '';
+    position: absolute;
+    bottom: -12px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background-color: var(--primary-600);
 }
 
 .tab-btn.new-tab-btn {
     color: var(--accent-emerald);
     opacity: 0.7;
+    margin-left: auto;
 }
 
 .tab-btn.new-tab-btn:hover {
     opacity: 1;
-    border-bottom-color: var(--accent-emerald);
+    background-color: rgba(16, 185, 129, 0.1);
 }
 
 /* ============================================
@@ -686,7 +829,7 @@ td.editable:hover:not(.example-row) {
 
 .tag-match-mode {
     display: flex;
-    gap: 16px;
+    gap: 12px;
     align-items: center;
 }
 
@@ -806,6 +949,9 @@ td.editable:hover:not(.example-row) {
     padding: 6px 12px;
     transition: opacity 0.2s;
     font-weight: 500;
+    pointer-events: auto;
+    position: relative;
+    z-index: 5;
 }
 
 .roll-log-clear:hover {

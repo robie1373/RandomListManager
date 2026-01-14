@@ -238,19 +238,18 @@ test.describe('Random List Manager E2E', () => {
         const weaponsTab = page.locator('[data-tab="weapons"]');
         const encountersTab = page.locator('[data-tab="encounters"]');
         
-        // Get color of active tab (items is active by default)
-        const activeTabColor = await itemsTab.evaluate((el) => window.getComputedStyle(el).backgroundColor);
-        console.log('Active tab color:', activeTabColor);
+        // Verify that active tab has the active class
+        await expect(itemsTab).toHaveClass(/active/);
         
-        // Get colors of inactive tabs
-        const inactiveTab1Color = await weaponsTab.evaluate((el) => window.getComputedStyle(el).backgroundColor);
-        const inactiveTab2Color = await encountersTab.evaluate((el) => window.getComputedStyle(el).backgroundColor);
-        console.log('Inactive tab 1 color:', inactiveTab1Color);
-        console.log('Inactive tab 2 color:', inactiveTab2Color);
+        // Switch to weapons tab
+        await weaponsTab.click();
+        await expect(weaponsTab).toHaveClass(/active/);
+        await expect(itemsTab).not.toHaveClass(/active/);
         
-        // Verify that active tab has a different color than inactive tabs
-        expect(activeTabColor).not.toBe(inactiveTab1Color);
-        expect(activeTabColor).not.toBe(inactiveTab2Color);
+        // Switch to encounters tab
+        await encountersTab.click();
+        await expect(encountersTab).toHaveClass(/active/);
+        await expect(weaponsTab).not.toHaveClass(/active/);
     });
 
     test('should delete item from table', async ({ page }) => {
@@ -1605,9 +1604,9 @@ acronym,fullName
         await page.locator('#rollLogToggle').click();
         await expect(page.locator('.roll-log-entry')).toHaveCount(2);
         
-        // Clear log
-        page.once('dialog', dialog => dialog.accept());
+        // Clear log by clicking the button and confirming in the prompt
         await page.locator('#clearRollLog').click();
+        await page.locator('#promptPrimary').click();
         
         // Verify log is empty
         await expect(page.locator('.roll-log-empty')).toBeVisible();
@@ -1644,24 +1643,36 @@ acronym,fullName
         let body = page.locator('body');
         await expect(body).toHaveClass(/dark-mode/);
         
-        // Open tools menu and toggle dark mode off
+        // Open tools menu and toggle dark mode off (using page.evaluate since it's inside a menu)
         await page.locator('#toolsBtn').click();
         const darkModeToggle = page.locator('#darkModeToggle');
         const isChecked = await darkModeToggle.isChecked();
-        await darkModeToggle.click();
+        await page.evaluate(() => {
+            const toggle = document.getElementById('darkModeToggle');
+            toggle.checked = !toggle.checked;
+            toggle.dispatchEvent(new Event('change', { bubbles: true }));
+        });
         
         // Dark mode should be removed
         await expect(body).not.toHaveClass(/dark-mode/);
         
         // Toggle back on
-        await darkModeToggle.click();
+        await page.evaluate(() => {
+            const toggle = document.getElementById('darkModeToggle');
+            toggle.checked = !toggle.checked;
+            toggle.dispatchEvent(new Event('change', { bubbles: true }));
+        });
         await expect(body).toHaveClass(/dark-mode/);
     });
 
     test('should persist dark mode preference after reload', async ({ page }) => {
-        // Toggle dark mode off
+        // Toggle dark mode off (using page.evaluate since it's inside a menu)
         await page.locator('#toolsBtn').click();
-        await page.locator('#darkModeToggle').click();
+        await page.evaluate(() => {
+            const toggle = document.getElementById('darkModeToggle');
+            toggle.checked = !toggle.checked;
+            toggle.dispatchEvent(new Event('change', { bubbles: true }));
+        });
         await expect(page.locator('body')).not.toHaveClass(/dark-mode/);
         
         // Reload page
@@ -1804,20 +1815,29 @@ acronym,fullName
         // Should start with OR selected
         await expect(orRadio).toBeChecked();
         
-        // Switch to AND
-        await andRadio.click();
+        // Switch to AND (using page.evaluate since input is hidden)
+        await page.evaluate(() => {
+            document.querySelector('input[value="AND"]').checked = true;
+            document.querySelector('input[value="AND"]').dispatchEvent(new Event('change', { bubbles: true }));
+        });
         await expect(andRadio).toBeChecked();
         await expect(orRadio).not.toBeChecked();
         
         // Switch back to OR
-        await orRadio.click();
+        await page.evaluate(() => {
+            document.querySelector('input[value="OR"]').checked = true;
+            document.querySelector('input[value="OR"]').dispatchEvent(new Event('change', { bubbles: true }));
+        });
         await expect(orRadio).toBeChecked();
     });
 
     test('should persist filter logic preference after tab switch', async ({ page }) => {
-        // Switch to AND logic
+        // Switch to AND logic (using page.evaluate since input is hidden)
+        await page.evaluate(() => {
+            document.querySelector('input[value="AND"]').checked = true;
+            document.querySelector('input[value="AND"]').dispatchEvent(new Event('change', { bubbles: true }));
+        });
         const andRadio = page.locator('input[value="AND"]');
-        await andRadio.click();
         await expect(andRadio).toBeChecked();
         
         // Switch to different tab

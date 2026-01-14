@@ -8,41 +8,49 @@
     <title>Random List Manager</title>
     <link rel="stylesheet" href="src/styles.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body class="dark-mode">
     <div id="app">
         <!-- Navigation Header -->
         <header class="nav-header">
-            <button id="toolsBtn" class="tools-btn" aria-label="Tools menu">⚙️ Tools</button>
+            <button id="toolsBtn" class="tools-btn" aria-label="Tools menu">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M12 1v6m0 6v6"></path><path d="M4.22 4.22l4.24 4.24m6.08 0l4.24-4.24"></path><path d="M1 12h6m6 0h6"></path><path d="M4.22 19.78l4.24-4.24m6.08 0l4.24 4.24"></path></svg>
+                Tools
+            </button>
         </header>
         
         <!-- Tools Menu Dropdown -->
         <div id="toolsMenu" class="tools-menu hidden">
             <div class="tools-menu-section">
                 <label class="tools-menu-item">
-                    <input type="checkbox" id="darkModeToggle" checked>
-                    <span>Dark Mode</span>
+                    <div class="switch-container">
+                        <span class="switch-label">Light</span>
+                        <input type="checkbox" id="darkModeToggle" checked class="switch-input">
+                        <span class="switch-slider"></span>
+                        <span class="switch-label">Dark</span>
+                    </div>
                 </label>
             </div>
             <div class="tools-menu-divider"></div>
             <div class="tools-menu-section">
-                <button class="tools-menu-btn" id="exportCSV">📄 Export CSV</button>
-                <button class="tools-menu-btn" id="exportJSON">📋 Export JSON</button>
-                <button class="tools-menu-btn" id="exportXLSX">📊 Export XLSX</button>
-                <button class="tools-menu-btn" id="exportAllTabs">📦 Export All Tabs (JSON)</button>
+                <button class="tools-menu-btn" id="exportCSV"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg> Export CSV</button>
+                <button class="tools-menu-btn" id="exportJSON"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg> Export JSON</button>
+                <button class="tools-menu-btn" id="exportXLSX"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg> Export XLSX</button>
+                <button class="tools-menu-btn" id="exportAllTabs"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> Export All Tabs (JSON)</button>
             </div>
             <div class="tools-menu-divider"></div>
             <div class="tools-menu-section">
-                <button class="tools-menu-btn" id="importData">📥 Import Data</button>
+                <button class="tools-menu-btn" id="importData"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> Import Data</button>
                 <input type="file" id="importFileInput" accept=".csv,.json,.xlsx" style="display: none;">
             </div>
             <div class="tools-menu-divider"></div>
             <div class="tools-menu-section">
-                <button class="tools-menu-btn" id="deleteTab">🗑️ Delete Current Tab</button>
+                <button class="tools-menu-btn" id="deleteTab"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg> Delete Current Tab</button>
             </div>
             <div class="tools-menu-divider"></div>
             <div class="tools-menu-section">
-                <button class="tools-menu-btn" id="aboutBtn">ℹ️ About</button>
+                <button class="tools-menu-btn" id="aboutBtn"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg> About</button>
             </div>
             <div class="tools-menu-divider"></div>
             <div class="tools-menu-warning">
@@ -111,15 +119,15 @@
         <!-- Results Display -->
         <div id="resultWrapper">
             <div id="result">Ready to roll...</div>
-            <button id="copyBtn" class="hidden">📋 Copy</button>
-            <button id="rollBtn" class="btn-random">🎲 Roll on Table</button>
+            <button id="copyBtn" class="hidden"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copy</button>
+            <button id="rollBtn" class="btn-random"><svg class="icon" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="20" height="20" rx="2" fill="none"/><circle cx="7" cy="7" r="1.5"/><circle cx="17" cy="7" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="7" cy="17" r="1.5"/><circle cx="17" cy="17" r="1.5"/></svg> Roll on Table</button>
         </div>
         
         <!-- Roll Log -->
         <div id="rollLogContainer" class="roll-log-container collapsed">
             <div class="roll-log-header">
-                <button id="rollLogToggle" class="roll-log-toggle">▶ Show Roll Log</button>
-                <button id="clearRollLog" class="roll-log-clear">🗑️ Clear</button>
+                <button id="rollLogToggle" class="roll-log-toggle"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg> Show Roll Log</button>
+                <button id="clearRollLog" class="roll-log-clear"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg> Clear</button>
             </div>
             <div id="rollLogList" class="roll-log-list"></div>
         </div>
@@ -131,11 +139,11 @@
                 <div class="tag-match-mode">
                     <label>
                         <input type="radio" name="tagMatchMode" value="OR" checked>
-                        <span>OR (any)</span>
+                        OR (any)
                     </label>
                     <label>
                         <input type="radio" name="tagMatchMode" value="AND">
-                        <span>AND (all)</span>
+                        AND (all)
                     </label>
                 </div>
             </div>
@@ -192,5 +200,11 @@
     </div>
         
     <script type="module" src="src/ui.js"></script>
+    <script>
+        // Initialize Lucide icons
+        if (window.lucide) {
+            window.lucide.createIcons();
+        }
+    </script>
 </body>
 </html>
