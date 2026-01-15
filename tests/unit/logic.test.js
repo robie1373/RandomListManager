@@ -89,7 +89,7 @@ describe('DiceEngine - pickWeightedItem', () => {
         expect(picked.name).toBe("Epic Sword");
     });
 
-    it('defaults to weight 40 for items without weight property', () => {
+    it('defaults to weight 50 for items without weight property', () => {
         const list = [
             { name: "Item A" },
             { name: "Item B" }
@@ -100,9 +100,9 @@ describe('DiceEngine - pickWeightedItem', () => {
         expect(['Item A', 'Item B']).toContain(picked.name);
     });
 
-    it('constrains weights between 1 and 100', () => {
+    it('constrains weights between 0 and 100', () => {
         const list = [
-            { name: "Low", weight: -50 },  // Should be clamped to 1
+            { name: "Low", weight: -50 },  // Should be clamped to 0
             { name: "High", weight: 200 }  // Should be clamped to 100
         ];
         
@@ -113,25 +113,25 @@ describe('DiceEngine - pickWeightedItem', () => {
             if (picked.name === "High") highCount++;
         }
         
-        // With High clamped to 100 and Low to 1, High should win ~99% of the time
-        expect(highCount).toBeGreaterThan(80); // Allowing for random variance
+        // With High clamped to 100 and Low to 0, High should win every time
+        expect(highCount).toBe(100);
     });
 
-    it('handles items with weight 0 by clamping to 1', () => {
+    it('handles items with weight 0 by excluding them from rolls', () => {
         const list = [
             { name: "Zero Weight", weight: 0 },
             { name: "Normal Weight", weight: 50 }
         ];
         
-        // Even with weight 0 clamped to 1, should occasionally pick it
+        // With weight 0 excluded, should never pick the zero-weight item
         let zeroCount = 0;
         for (let i = 0; i < 500; i++) {
             const picked = DiceEngine.pickWeightedItem(list);
             if (picked.name === "Zero Weight") zeroCount++;
         }
         
-        // Should have ~2% chance (1/51), so should pick many times in 500 rolls
-        expect(zeroCount).toBeGreaterThan(3); // At least a few times (allows for variance)
+        // With zero probability, it should not be selected
+        expect(zeroCount).toBe(0);
     });
 
     it('respects weight distribution across multiple items', () => {
@@ -214,21 +214,21 @@ describe('UIUtils - formatTabLabel', () => {
 });
 
 describe('UIUtils - constrainWeight', () => {
-    it('defaults to 40 when weight is undefined', () => {
-        expect(UIUtils.constrainWeight(undefined)).toBe(40);
+    it('defaults to 50 when weight is undefined', () => {
+        expect(UIUtils.constrainWeight(undefined)).toBe(50);
     });
 
-    it('defaults to 40 when weight is null', () => {
-        expect(UIUtils.constrainWeight(null)).toBe(40);
+    it('defaults to 50 when weight is null', () => {
+        expect(UIUtils.constrainWeight(null)).toBe(50);
     });
 
-    it('clamps negative weights to 1', () => {
-        expect(UIUtils.constrainWeight(-50)).toBe(1);
-        expect(UIUtils.constrainWeight(-1)).toBe(1);
+    it('clamps negative weights to 0', () => {
+        expect(UIUtils.constrainWeight(-50)).toBe(0);
+        expect(UIUtils.constrainWeight(-1)).toBe(0);
     });
 
-    it('keeps weight 0 clamped to 1', () => {
-        expect(UIUtils.constrainWeight(0)).toBe(1);
+    it('keeps weight 0 unchanged', () => {
+        expect(UIUtils.constrainWeight(0)).toBe(0);
     });
 
     it('keeps valid weights unchanged', () => {
@@ -250,7 +250,7 @@ describe('UIUtils - createItem', () => {
             name: 'Test Item',
             tags: '',
             reference: '',
-            weight: 40,
+            weight: 50,
             ref: ''
         });
     });
@@ -276,9 +276,9 @@ describe('UIUtils - createItem', () => {
         expect(item.name).toBe('');
     });
 
-    it('clamps negative weight to 1', () => {
+    it('clamps negative weight to 0', () => {
         const item = UIUtils.createItem('Test', '', '', -10);
-        expect(item.weight).toBe(1);
+        expect(item.weight).toBe(0);
     });
 });
 
@@ -302,7 +302,7 @@ describe('UIUtils - normalizeItem', () => {
             name: 'Item',
             tags: '',
             reference: '',
-            weight: 40,
+            weight: 50,
             ref: ''
         });
     });

@@ -20,6 +20,8 @@ let rollHistory = {}; // Per-tab roll history
 let rollResults = {}; // Per-tab roll results
 let pendingImport = null;
 let selectedRows = new Set(); // Track selected row indices for bulk editing
+let pendingUniqueItem = null; // Track the last rolled unique item
+let pendingLimitItem = null; // Track the last rolled limit item
 
 // Initialize tabs structure
 let tabs = JSON.parse(localStorage.getItem(TABS_KEY)) || [
@@ -162,24 +164,51 @@ export const UI = {
         document.getElementById('rollBtn').addEventListener('click', () => this.handleRoll());
         document.getElementById('copyBtn').addEventListener('click', () => this.copyToClipboard());
 
+        // Unique item inline prompt actions
+        const uniquePromptYes = document.getElementById('uniquePromptYes');
+        const uniquePromptNo = document.getElementById('uniquePromptNo');
+        if (uniquePromptYes) {
+            uniquePromptYes.addEventListener('click', () => this.handleUniquePromptYes());
+        }
+        if (uniquePromptNo) {
+            uniquePromptNo.addEventListener('click', () => this.handleUniquePromptNo());
+        }
+
+        // Limit item inline prompt actions
+        const limitPromptYes = document.getElementById('limitPromptYes');
+        const limitPromptNo = document.getElementById('limitPromptNo');
+        if (limitPromptYes) {
+            limitPromptYes.addEventListener('click', () => this.handleLimitPromptYes());
+        }
+        if (limitPromptNo) {
+            limitPromptNo.addEventListener('click', () => this.handleLimitPromptNo());
+        }
+
         // Roll log toggle and clear
         document.getElementById('rollLogToggle').addEventListener('click', () => this.toggleRollLog());
         document.getElementById('clearRollLog').addEventListener('click', () => this.clearRollLog());
 
-        // Tools Menu
+        // Tools Modal
         const toolsBtn = document.getElementById('toolsBtn');
         const toolsMenu = document.getElementById('toolsMenu');
-        toolsBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            toolsMenu.classList.toggle('hidden');
-        });
-
-        // Close menu when clicking outside
-        document.addEventListener('click', (e) => {
-            if (!toolsMenu.contains(e.target) && !toolsBtn.contains(e.target)) {
-                toolsMenu.classList.add('hidden');
-            }
-        });
+        if (toolsBtn) {
+            toolsBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.showTools();
+            });
+        }
+        if (document.getElementById('closeTools')) {
+            document.getElementById('closeTools').addEventListener('click', () => {
+                this.hideTools();
+            });
+        }
+        if (toolsMenu) {
+            toolsMenu.addEventListener('click', (e) => {
+                if (e.target.id === 'toolsMenu') {
+                    this.hideTools();
+                }
+            });
+        }
 
         // Dark Mode Toggle
         const darkModeToggle = document.getElementById('darkModeToggle');
@@ -200,31 +229,31 @@ export const UI = {
         // Export buttons
         document.getElementById('exportCSV').addEventListener('click', () => {
             this.exportData('csv');
-            toolsMenu.classList.add('hidden');
+            this.hideTools();
         });
         document.getElementById('exportJSON').addEventListener('click', () => {
             this.exportData('json');
-            toolsMenu.classList.add('hidden');
+            this.hideTools();
         });
         document.getElementById('exportXLSX').addEventListener('click', () => {
             this.exportData('xlsx');
-            toolsMenu.classList.add('hidden');
+            this.hideTools();
         });
         document.getElementById('exportAllTabs').addEventListener('click', () => {
             this.exportAllTabs();
-            toolsMenu.classList.add('hidden');
+            this.hideTools();
         });
 
         // Delete tab
         document.getElementById('deleteTab').addEventListener('click', () => {
             this.promptDeleteTab();
-            toolsMenu.classList.add('hidden');
+            this.hideTools();
         });
 
         // About button
         document.getElementById('aboutBtn').addEventListener('click', () => {
             this.showAbout();
-            toolsMenu.classList.add('hidden');
+            this.hideTools();
         });
         document.getElementById('closeAbout').addEventListener('click', () => {
             this.hideAbout();
@@ -234,6 +263,28 @@ export const UI = {
                 this.hideAbout();
             }
         });
+
+        // Tips and Tricks button
+        const tipsBtn = document.getElementById('tipsBtn');
+        const tipsModal = document.getElementById('tipsModal');
+        if (tipsBtn) {
+            tipsBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.showTips();
+            });
+        }
+        if (document.getElementById('closeTips')) {
+            document.getElementById('closeTips').addEventListener('click', () => {
+                this.hideTips();
+            });
+        }
+        if (tipsModal) {
+            tipsModal.addEventListener('click', (e) => {
+                if (e.target.id === 'tipsModal') {
+                    this.hideTips();
+                }
+            });
+        }
 
         // Import button
         const importFileInput = document.getElementById('importFileInput');
@@ -511,9 +562,11 @@ export const UI = {
             if (item.tags) {
                 const tags = item.tags.split(',').map(t => t.trim()).filter(t => t);
                 tags.forEach(tag => {
-                    const lowerTag = tag.toLowerCase();
+                    // For limit=n tags, display as just 'limit'
+                    const displayTag = tag.startsWith('limit=') ? 'limit' : tag;
+                    const lowerTag = displayTag.toLowerCase();
                     if (!tagsMap.has(lowerTag)) {
-                        tagsMap.set(lowerTag, tag);
+                        tagsMap.set(lowerTag, displayTag);
                     }
                 });
             }
@@ -640,7 +693,9 @@ export const UI = {
 
     handleRoll() {
         const list = this.getFilteredList();
-        const selectedItem = DiceEngine.pickWeightedItem(list);
+        // Exclude items with weight 0 from rolling
+        const rollableList = list.filter(item => (item.weight || 0) > 0);
+        const selectedItem = DiceEngine.pickWeightedItem(rollableList);
         
         if (selectedItem) {
             const rawName = selectedItem.reference ? `${selectedItem.name} (${selectedItem.reference})` : selectedItem.name;
@@ -656,7 +711,133 @@ export const UI = {
             document.getElementById('copyBtn').classList.remove('hidden');
             this.addToHistory(resultText);
             this.renderRollLog();
+
+            // Check for limit tag and show limit prompt if applicable
+            const limitValue = this.parseLimitFromTags(selectedItem.tags || '');
+            if (limitValue !== null && limitValue > 0) {
+                this.showLimitPrompt(selectedItem);
+                this.hideUniquePrompt();
+            } else {
+                this.hideLimitPrompt();
+                // Show unique prompt when applicable (only if limit prompt not shown)
+                const hasUniqueTag = (selectedItem.tags || '').toLowerCase().split(',').map(t => t.trim()).includes('unique');
+                if (hasUniqueTag && selectedItem.weight > 0) {
+                    this.showUniquePrompt(selectedItem);
+                } else {
+                    this.hideUniquePrompt();
+                }
+            }
+        } else {
+            this.hideUniquePrompt();
+            this.hideLimitPrompt();
         }
+    },
+
+    parseLimitFromTags(tagsStr) {
+        if (!tagsStr) return null;
+        const tags = tagsStr.split(',').map(t => t.trim());
+        for (const tag of tags) {
+            if (tag.startsWith('limit=')) {
+                const value = parseInt(tag.substring(6), 10);
+                if (!isNaN(value)) {
+                    return value;
+                }
+            }
+        }
+        return null;
+    },
+
+    showLimitPrompt(item) {
+        pendingLimitItem = item;
+        const promptEl = document.getElementById('limitPrompt');
+        if (promptEl) {
+            promptEl.classList.remove('hidden');
+        }
+    },
+
+    hideLimitPrompt() {
+        pendingLimitItem = null;
+        const promptEl = document.getElementById('limitPrompt');
+        if (promptEl && !promptEl.classList.contains('hidden')) {
+            promptEl.classList.add('hidden');
+        }
+    },
+
+    handleLimitPromptYes() {
+        if (!pendingLimitItem) {
+            this.hideLimitPrompt();
+            return;
+        }
+
+        const items = data[currentTab];
+        const idx = items.indexOf(pendingLimitItem);
+        if (idx > -1) {
+            const item = items[idx];
+            const tagsArray = (item.tags || '').split(',').map(t => t.trim());
+            const newTagsArray = [];
+            
+            for (const tag of tagsArray) {
+                if (tag.startsWith('limit=')) {
+                    const currentLimit = parseInt(tag.substring(6), 10);
+                    if (!isNaN(currentLimit)) {
+                        const newLimit = currentLimit - 1;
+                        newTagsArray.push(`limit=${newLimit}`);
+                        // If newLimit <= 0, set weight to 0
+                        if (newLimit <= 0) {
+                            item.weight = 0;
+                        }
+                    }
+                } else {
+                    newTagsArray.push(tag);
+                }
+            }
+            
+            item.tags = newTagsArray.filter(t => t).join(', ') || TAGS_DEFAULT;
+            localStorage.setItem(STORAGE_KEY + currentTab, JSON.stringify(items));
+            this.renderTagCloud();
+            this.renderList();
+        }
+        this.hideLimitPrompt();
+    },
+
+    handleLimitPromptNo() {
+        this.hideLimitPrompt();
+    },
+
+    showUniquePrompt(item) {
+        pendingUniqueItem = item;
+        const promptEl = document.getElementById('uniquePrompt');
+        if (promptEl) {
+            promptEl.classList.remove('hidden');
+        }
+    },
+
+    hideUniquePrompt() {
+        pendingUniqueItem = null;
+        const promptEl = document.getElementById('uniquePrompt');
+        if (promptEl && !promptEl.classList.contains('hidden')) {
+            promptEl.classList.add('hidden');
+        }
+    },
+
+    handleUniquePromptYes() {
+        if (!pendingUniqueItem) {
+            this.hideUniquePrompt();
+            return;
+        }
+
+        const items = data[currentTab];
+        const idx = items.indexOf(pendingUniqueItem);
+        if (idx > -1) {
+            items[idx].weight = 0;
+            localStorage.setItem(STORAGE_KEY + currentTab, JSON.stringify(items));
+            this.renderList();
+        }
+        this.hideUniquePrompt();
+    },
+
+    handleUniquePromptNo() {
+        this.hideUniquePrompt();
     },
 
     getFilteredList() {
@@ -672,6 +853,13 @@ export const UI = {
                     itemTags.push(ref);
                 }
             }
+            
+            // Handle "limit" tag filtering - match any "limit=n" tag
+            const hasLimitTag = itemTags.some(tag => tag.startsWith('limit='));
+            if (hasLimitTag) {
+                itemTags.push('limit');
+            }
+            
             const activeFilters = Array.from(selectedTags).map(t => t.toLowerCase());
             
             return filterLogic === 'OR' 
@@ -702,7 +890,7 @@ export const UI = {
                 <td class="editable" data-field="name">${capitalizeWords(item.name)}</td>
                 <td class="editable" data-field="tags">${capitalizeWords(item.tags || '')}</td>
                 <td class="editable" data-field="reference">${capitalizeWords(item.reference || '')}</td>
-                <td class="editable" data-field="weight">${item.weight || 1}</td>
+                <td class="editable" data-field="weight">${Number.isFinite(item.weight) ? item.weight : 0}</td>
                 <td><button class="btn-delete" data-index="${originalIndex}">×</button></td>
             </tr>
         `}).join('');
@@ -903,7 +1091,7 @@ export const UI = {
         input.className = 'cell-input';
         
         if (fieldName === 'weight') {
-            input.min = '1';
+            input.min = '0';
             input.max = '100';
         }
         
@@ -1118,7 +1306,7 @@ export const UI = {
                     name: '',
                     tags: '',
                     reference: '',
-                    weight: 40
+                    weight: 50
                 };
                 
                 // Get current values from the row
@@ -1610,7 +1798,7 @@ export const UI = {
         if (isNaN(parsed)) {
             return WEIGHT_DEFAULT;
         }
-        return Math.max(1, Math.min(100, parsed));
+        return Math.max(0, Math.min(100, parsed));
     },
 
     preventCSVInjection(value) {
@@ -2023,6 +2211,34 @@ export const UI = {
     hideAbout() {
         const modal = document.getElementById('aboutModal');
         modal.classList.add('hidden');
+    },
+
+    showTips() {
+        const modal = document.getElementById('tipsModal');
+        if (modal) {
+            modal.classList.remove('hidden');
+        }
+    },
+
+    hideTips() {
+        const modal = document.getElementById('tipsModal');
+        if (modal) {
+            modal.classList.add('hidden');
+        }
+    },
+
+    showTools() {
+        const modal = document.getElementById('toolsMenu');
+        if (modal) {
+            modal.classList.remove('hidden');
+        }
+    },
+
+    hideTools() {
+        const modal = document.getElementById('toolsMenu');
+        if (modal) {
+            modal.classList.add('hidden');
+        }
     }
 };
 

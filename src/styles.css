@@ -107,6 +107,7 @@ body {
     top: 0;
     z-index: 50;
     border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    gap: 4px;
 }
 
 .app-title-wrapper {
@@ -151,6 +152,10 @@ body {
     white-space: nowrap;
 }
 
+#toolsBtn {
+    margin-left: auto;
+}
+
 .tools-btn:hover {
     background-color: rgba(2, 132, 199, 0.25);
     border-color: var(--primary-400);
@@ -165,37 +170,23 @@ body {
    TOOLS MENU DROPDOWN
    ============================================ */
 
-.tools-menu {
-    position: fixed;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    background-color: var(--bg-surface);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 8px 0;
-    min-width: 240px;
-    max-width: 90vw;
-    max-height: 80vh;
-    overflow-y: auto;
-    box-shadow: var(--shadow-xl);
-    z-index: 1000;
-    animation: slideDown 0.2s ease;
+/* Tools Modal - uses existing .modal and .modal-content styles */
+#toolsMenu.modal-content {
+    max-width: 600px;
 }
 
-@keyframes slideDown {
-    from {
-        opacity: 0;
-        transform: translateY(-12px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+#toolsMenu.modal-content h3 {
+    margin-top: 20px;
+    margin-bottom: 12px;
+    font-size: 1rem;
+    font-weight: 600;
 }
 
 .tools-menu-section {
-    padding: 6px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 8px;
 }
 
 .tools-menu-item {
@@ -412,10 +403,12 @@ body {
     border-radius: 16px;
     padding: 32px;
     max-width: 700px;
+    max-height: 90vh;
     margin: 20px;
     position: relative;
     box-shadow: var(--shadow-xl);
     animation: slideUp 0.2s ease;
+    overflow-y: auto;
 }
 
 @keyframes slideUp {
@@ -547,6 +540,68 @@ body {
 
 .prompt-btn.ghost:hover {
     background: var(--bg-elevated);
+}
+
+/* Inline prompt for unique items after a roll */
+.unique-prompt {
+    margin-top: 12px;
+    padding: 12px 14px;
+    border: 1px solid #334155;
+    background: #0f172a;
+    border-radius: 8px;
+    color: #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.unique-prompt-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+/* Inline prompt for limit items after a roll */
+.limit-prompt {
+    margin-top: 12px;
+    padding: 12px 14px;
+    border: 1px solid #334155;
+    background: #0f172a;
+    border-radius: 8px;
+    color: #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.limit-prompt-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.btn-inline {
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid #475569;
+    background: #1e293b;
+    color: #e2e8f0;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.btn-inline:hover {
+    background: #24344d;
+}
+
+.btn-inline.primary {
+    background: #0ea5e9;
+    border-color: #0284c7;
+    color: #0b1221;
+}
+
+.btn-inline.primary:hover {
+    background: #38bdf8;
 }
 
 /* ============================================
