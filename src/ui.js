@@ -21,6 +21,7 @@ let rollResults = {}; // Per-tab roll results
 let pendingImport = null;
 let selectedRows = new Set(); // Track selected row indices for bulk editing
 let pendingUniqueItem = null; // Track the last rolled unique item
+let pendingLimitItem = null; // Track the last rolled limit item
 
 // Initialize tabs structure
 let tabs = JSON.parse(localStorage.getItem(TABS_KEY)) || [
@@ -171,6 +172,16 @@ export const UI = {
         }
         if (uniquePromptNo) {
             uniquePromptNo.addEventListener('click', () => this.handleUniquePromptNo());
+        }
+
+        // Limit item inline prompt actions
+        const limitPromptYes = document.getElementById('limitPromptYes');
+        const limitPromptNo = document.getElementById('limitPromptNo');
+        if (limitPromptYes) {
+            limitPromptYes.addEventListener('click', () => this.handleLimitPromptYes());
+        }
+        if (limitPromptNo) {
+            limitPromptNo.addEventListener('click', () => this.handleLimitPromptNo());
         }
 
         // Roll log toggle and clear
@@ -522,9 +533,11 @@ export const UI = {
             if (item.tags) {
                 const tags = item.tags.split(',').map(t => t.trim()).filter(t => t);
                 tags.forEach(tag => {
-                    const lowerTag = tag.toLowerCase();
+                    // For limit=n tags, display as just 'limit'
+                    const displayTag = tag.startsWith('limit=') ? 'limit' : tag;
+                    const lowerTag = displayTag.toLowerCase();
                     if (!tagsMap.has(lowerTag)) {
-                        tagsMap.set(lowerTag, tag);
+                        tagsMap.set(lowerTag, displayTag);
                     }
                 });
             }
@@ -651,7 +664,9 @@ export const UI = {
 
     handleRoll() {
         const list = this.getFilteredList();
-        const selectedItem = DiceEngine.pickWeightedItem(list);
+        // Exclude items with weight 0 from rolling
+        const rollableList = list.filter(item => (item.weight || 0) > 0);
+        const selectedItem = DiceEngine.pickWeightedItem(rollableList);
         
         if (selectedItem) {
             const rawName = selectedItem.reference ? `${selectedItem.name} (${selectedItem.reference})` : selectedItem.name;
@@ -668,16 +683,96 @@ export const UI = {
             this.addToHistory(resultText);
             this.renderRollLog();
 
-            // Show unique prompt when applicable
-            const hasUniqueTag = (selectedItem.tags || '').toLowerCase().split(',').map(t => t.trim()).includes('unique');
-            if (hasUniqueTag && selectedItem.weight > 0) {
-                this.showUniquePrompt(selectedItem);
-            } else {
+            // Check for limit tag and show limit prompt if applicable
+            const limitValue = this.parseLimitFromTags(selectedItem.tags || '');
+            if (limitValue !== null && limitValue > 0) {
+                this.showLimitPrompt(selectedItem);
                 this.hideUniquePrompt();
+            } else {
+                this.hideLimitPrompt();
+                // Show unique prompt when applicable (only if limit prompt not shown)
+                const hasUniqueTag = (selectedItem.tags || '').toLowerCase().split(',').map(t => t.trim()).includes('unique');
+                if (hasUniqueTag && selectedItem.weight > 0) {
+                    this.showUniquePrompt(selectedItem);
+                } else {
+                    this.hideUniquePrompt();
+                }
             }
         } else {
             this.hideUniquePrompt();
+            this.hideLimitPrompt();
         }
+    },
+
+    parseLimitFromTags(tagsStr) {
+        if (!tagsStr) return null;
+        const tags = tagsStr.split(',').map(t => t.trim());
+        for (const tag of tags) {
+            if (tag.startsWith('limit=')) {
+                const value = parseInt(tag.substring(6), 10);
+                if (!isNaN(value)) {
+                    return value;
+                }
+            }
+        }
+        return null;
+    },
+
+    showLimitPrompt(item) {
+        pendingLimitItem = item;
+        const promptEl = document.getElementById('limitPrompt');
+        if (promptEl) {
+            promptEl.classList.remove('hidden');
+        }
+    },
+
+    hideLimitPrompt() {
+        pendingLimitItem = null;
+        const promptEl = document.getElementById('limitPrompt');
+        if (promptEl && !promptEl.classList.contains('hidden')) {
+            promptEl.classList.add('hidden');
+        }
+    },
+
+    handleLimitPromptYes() {
+        if (!pendingLimitItem) {
+            this.hideLimitPrompt();
+            return;
+        }
+
+        const items = data[currentTab];
+        const idx = items.indexOf(pendingLimitItem);
+        if (idx > -1) {
+            const item = items[idx];
+            const tagsArray = (item.tags || '').split(',').map(t => t.trim());
+            const newTagsArray = [];
+            
+            for (const tag of tagsArray) {
+                if (tag.startsWith('limit=')) {
+                    const currentLimit = parseInt(tag.substring(6), 10);
+                    if (!isNaN(currentLimit)) {
+                        const newLimit = currentLimit - 1;
+                        newTagsArray.push(`limit=${newLimit}`);
+                        // If newLimit <= 0, set weight to 0
+                        if (newLimit <= 0) {
+                            item.weight = 0;
+                        }
+                    }
+                } else {
+                    newTagsArray.push(tag);
+                }
+            }
+            
+            item.tags = newTagsArray.filter(t => t).join(', ') || TAGS_DEFAULT;
+            localStorage.setItem(STORAGE_KEY + currentTab, JSON.stringify(items));
+            this.renderTagCloud();
+            this.renderList();
+        }
+        this.hideLimitPrompt();
+    },
+
+    handleLimitPromptNo() {
+        this.hideLimitPrompt();
     },
 
     showUniquePrompt(item) {
@@ -729,6 +824,13 @@ export const UI = {
                     itemTags.push(ref);
                 }
             }
+            
+            // Handle "limit" tag filtering - match any "limit=n" tag
+            const hasLimitTag = itemTags.some(tag => tag.startsWith('limit='));
+            if (hasLimitTag) {
+                itemTags.push('limit');
+            }
+            
             const activeFilters = Array.from(selectedTags).map(t => t.toLowerCase());
             
             return filterLogic === 'OR' 
