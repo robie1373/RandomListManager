@@ -19,6 +19,7 @@ let selectedTags = new Set();
 let rollHistory = {}; // Per-tab roll history
 let rollResults = {}; // Per-tab roll results
 let pendingImport = null;
+let selectedRows = new Set(); // Track selected row indices for bulk editing
 
 // Initialize tabs structure
 let tabs = JSON.parse(localStorage.getItem(TABS_KEY)) || [
@@ -264,6 +265,12 @@ export const UI = {
                 const row = e.target.parentElement;
                 this.editCell(e.target, row);
             }
+            // Handle row selection checkboxes
+            if (e.target.classList.contains('row-checkbox')) {
+                const row = e.target.closest('tr');
+                const itemIndex = parseInt(row.getAttribute('data-item-index'));
+                this.toggleRowSelection(itemIndex);
+            }
         });
         
         // Delete Legend Entry Buttons (delegated)
@@ -293,6 +300,21 @@ export const UI = {
 
         // Clear tags button
         document.getElementById('clearTagsBtn').addEventListener('click', () => this.clearAllTags());
+        
+        // Select all checkbox
+        document.getElementById('selectAllCheckbox').addEventListener('change', (e) => {
+            this.toggleSelectAll(e.target.checked);
+        });
+        
+        // Bulk edit save button
+        document.getElementById('bulkEditSave').addEventListener('click', () => {
+            this.applyBulkEdit();
+        });
+        
+        // Bulk edit cancel button
+        document.getElementById('bulkEditCancel').addEventListener('click', () => {
+            this.clearSelection();
+        });
     },
 
     switchTab(tab) {
@@ -326,9 +348,151 @@ export const UI = {
             }
         }
         
+        // Clear selection when switching tabs
+        this.clearSelection();
+        
         this.renderTagCloud();
         this.renderList();
         this.renderRollLog();
+    },
+    
+    toggleRowSelection(itemIndex) {
+        if (selectedRows.has(itemIndex)) {
+            selectedRows.delete(itemIndex);
+        } else {
+            selectedRows.add(itemIndex);
+        }
+        this.renderList();
+        this.updateBulkEditPanel();
+    },
+    
+    toggleSelectAll(checked) {
+        const filtered = this.getFilteredList();
+        const allItems = data[currentTab];
+        
+        if (checked) {
+            // Select all visible items
+            filtered.forEach(item => {
+                const index = allItems.indexOf(item);
+                if (index !== -1) {
+                    selectedRows.add(index);
+                }
+            });
+        } else {
+            // Deselect all visible items
+            filtered.forEach(item => {
+                const index = allItems.indexOf(item);
+                if (index !== -1) {
+                    selectedRows.delete(index);
+                }
+            });
+        }
+        this.renderList();
+        this.updateBulkEditPanel();
+    },
+    
+    clearSelection() {
+        selectedRows.clear();
+        const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+        if (selectAllCheckbox) selectAllCheckbox.checked = false;
+        this.renderList();
+        this.updateBulkEditPanel();
+    },
+    
+    updateBulkEditPanel() {
+        const panel = document.getElementById('bulkEditPanel');
+        const count = document.getElementById('bulkEditCount');
+        const tagsInput = document.getElementById('bulkEditTags');
+        const refInput = document.getElementById('bulkEditReference');
+        
+        if (selectedRows.size === 0) {
+            panel.classList.add('hidden');
+            return;
+        }
+        
+        panel.classList.remove('hidden');
+        count.textContent = selectedRows.size;
+        
+        // Find common tags and references
+        const selectedItems = Array.from(selectedRows).map(idx => data[currentTab][idx]);
+        
+        // Get intersection of all tags
+        const tagSets = selectedItems.map(item => {
+            if (!item.tags) return new Set();
+            return new Set(item.tags.split(',').map(t => t.trim().toLowerCase()).filter(t => t));
+        });
+        
+        const commonTags = tagSets.reduce((acc, set) => {
+            if (acc === null) return set;
+            return new Set([...acc].filter(x => set.has(x)));
+        }, null);
+        
+        tagsInput.value = commonTags ? Array.from(commonTags).join(', ') : '';
+        
+        // Get common reference (only if all items have the same reference)
+        const references = selectedItems.map(item => (item.reference || '').trim().toLowerCase());
+        const allSameRef = references.every(ref => ref === references[0]);
+        refInput.value = allSameRef && references[0] ? references[0] : '';
+    },
+    
+    applyBulkEdit() {
+        const tagsInput = document.getElementById('bulkEditTags');
+        const refInput = document.getElementById('bulkEditReference');
+        const newTagsStr = tagsInput.value.trim();
+        const newRef = refInput.value.trim();
+        
+        // Calculate current common tags (what was shown in the input initially)
+        const selectedItems = Array.from(selectedRows).map(idx => data[currentTab][idx]);
+        const tagSets = selectedItems.map(item => {
+            if (!item.tags) return new Set();
+            return new Set(item.tags.split(',').map(t => t.trim().toLowerCase()).filter(t => t));
+        });
+        
+        const oldCommonTags = tagSets.reduce((acc, set) => {
+            if (acc === null) return set;
+            return new Set([...acc].filter(x => set.has(x)));
+        }, null) || new Set();
+        
+        // Parse new tags from input
+        const newCommonTags = new Set(
+            newTagsStr.split(',').map(t => t.trim().toLowerCase()).filter(t => t)
+        );
+        
+        selectedRows.forEach(idx => {
+            const item = data[currentTab][idx];
+            if (!item) return;
+            
+            // Get current tags for this item
+            const currentTags = new Set(
+                (item.tags || '').split(',').map(t => t.trim().toLowerCase()).filter(t => t)
+            );
+            
+            // Remove old common tags that are no longer in the new common set
+            oldCommonTags.forEach(tag => {
+                if (!newCommonTags.has(tag)) {
+                    currentTags.delete(tag);
+                }
+            });
+            
+            // Add new common tags
+            newCommonTags.forEach(tag => {
+                currentTags.add(tag);
+            });
+            
+            // Update item tags
+            item.tags = Array.from(currentTags).join(', ') || TAGS_DEFAULT;
+            
+            // Update reference if specified
+            if (newRef) {
+                item.reference = newRef;
+            }
+        });
+        
+        // Save and update UI
+        localStorage.setItem(STORAGE_KEY + currentTab, JSON.stringify(data[currentTab]));
+        this.renderTagCloud();
+        this.renderList();
+        this.updateBulkEditPanel();
     },
 
     renderTagCloud() {
@@ -530,8 +694,10 @@ export const UI = {
         const itemsToShow = selectedTags.size === 0 ? allItems : filtered;
         const itemsHTML = itemsToShow.map((item) => {
             const originalIndex = allItems.indexOf(item);
+            const isSelected = selectedRows.has(originalIndex);
             return `
-            <tr data-item-index="${originalIndex}">
+            <tr data-item-index="${originalIndex}" class="${isSelected ? 'selected-row' : ''}">
+                <td class="checkbox-cell"><input type="checkbox" class="row-checkbox" ${isSelected ? 'checked' : ''}></td>
                 <td class="editable" data-field="name">${capitalizeWords(item.name)}</td>
                 <td class="editable" data-field="tags">${capitalizeWords(item.tags || '')}</td>
                 <td class="editable" data-field="reference">${capitalizeWords(item.reference || '')}</td>
@@ -542,6 +708,7 @@ export const UI = {
         
         const exampleRowHTML = `
             <tr class="example-row">
+                <td class="checkbox-cell"></td>
                 <td class="editable" data-field="name">Example ${tabLabel}</td>
                 <td class="editable" data-field="tags">Treasure, Cave</td>
                 <td class="editable" data-field="reference">Reference</td>

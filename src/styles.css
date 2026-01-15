@@ -1207,3 +1207,117 @@ td.editable:hover:not(.example-row) {
         gap: 16px;
     }
 }
+
+/* ============================================
+   BULK EDIT
+   ============================================ */
+
+.checkbox-header {
+    width: 40px;
+    text-align: center;
+}
+
+.checkbox-cell {
+    width: 40px;
+    text-align: center;
+    padding: 8px !important;
+}
+
+.row-checkbox {
+    cursor: pointer;
+    width: 18px;
+    height: 18px;
+}
+
+tr.selected-row {
+    background-color: var(--primary-100) !important;
+}
+
+body.dark-mode tr.selected-row {
+    background-color: rgba(14, 165, 233, 0.2) !important;
+}
+
+.bulk-edit-panel {
+    margin-top: 20px;
+    padding: 20px;
+    background: var(--bg-elevated);
+    border: 2px solid var(--primary-500);
+    border-radius: 12px;
+    box-shadow: var(--shadow-md);
+}
+
+.bulk-edit-header h3 {
+    margin: 0 0 16px 0;
+    color: var(--primary-600);
+    font-size: 1.1rem;
+}
+
+.bulk-edit-content {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.bulk-edit-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.bulk-edit-field label {
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.bulk-edit-field input {
+    padding: 10px 12px;
+    border: 1.5px solid var(--border-color);
+    background-color: var(--bg-surface);
+    color: var(--text-primary);
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 0.95rem;
+}
+
+.bulk-edit-field input:focus {
+    outline: none;
+    border-color: var(--primary-600);
+    box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.1);
+}
+
+.bulk-edit-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.btn-bulk-save,
+.btn-bulk-cancel {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-bulk-save {
+    background-color: var(--primary-600);
+    color: white;
+}
+
+.btn-bulk-save:hover {
+    background-color: var(--primary-700);
+    transform: translateY(-1px);
+}
+
+.btn-bulk-cancel {
+    background-color: var(--bg-surface);
+    color: var(--text-primary);
+    border: 1.5px solid var(--border-color);
+}
+
+.btn-bulk-cancel:hover {
+    background-color: var(--bg-elevated);
+}
