@@ -889,7 +889,7 @@ export const UI = {
                 <td class="checkbox-cell"><input type="checkbox" class="row-checkbox" ${isSelected ? 'checked' : ''}></td>
                 <td class="editable" data-field="name">${capitalizeWords(item.name)}</td>
                 <td class="editable" data-field="tags">${capitalizeWords(item.tags || '')}</td>
-                <td class="editable" data-field="reference">${capitalizeWords(item.reference || '')}</td>
+                <td class="editable" data-field="reference">${(item.reference || '').toUpperCase()}</td>
                 <td class="editable" data-field="weight">${Number.isFinite(item.weight) ? item.weight : 0}</td>
                 <td><button class="btn-delete" data-index="${originalIndex}">×</button></td>
             </tr>
