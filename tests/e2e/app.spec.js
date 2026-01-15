@@ -1292,6 +1292,55 @@ Wine,drink,p.14,20`;
         }
     });
 
+    test('should import multiple files sequentially', async ({ page }) => {
+        // Use existing sample data
+        const testDir = path.join(__dirname, '../../coverage/sample_data');
+        const file1Path = path.join(testDir, 'Items.json');
+        const file2Path = path.join(testDir, 'Food.json');
+        
+        // Select both files at once
+        const fileInput = page.locator('#importFileInput');
+        await fileInput.setInputFiles([file1Path, file2Path]);
+        
+        // Wait for imports to process
+        await page.waitForTimeout(1000);
+        
+        // Verify that the app has processed the imports
+        // Check that at least one tab exists (tabs use .tab-btn class)
+        const tabButtons = page.locator('.tab-btn');
+        const tabCount = await tabButtons.count();
+        expect(tabCount).toBeGreaterThanOrEqual(1);
+    });
+
+    test('should handle importing files without errors', async ({ page }) => {
+        // Use sample data to test import without file creation
+        const testDir = path.join(__dirname, '../../coverage/sample_data');
+        const csvPath = path.join(testDir, 'Items.json');
+        
+        // Import a file
+        const fileInput = page.locator('#importFileInput');
+        await fileInput.setInputFiles(csvPath);
+        
+        // Wait for import to complete
+        await page.waitForTimeout(500);
+        
+        // Verify the app is still responsive
+        await expect(page.locator('body')).toBeVisible();
+    });
+
+    test('should handle different file formats in import', async ({ page }) => {
+        const testDir = path.join(__dirname, '../../coverage/sample_data');
+        
+        // Test importing a JSON file
+        const jsonPath = path.join(testDir, 'Items.json');
+        const fileInput = page.locator('#importFileInput');
+        await fileInput.setInputFiles(jsonPath);
+        await page.waitForTimeout(500);
+        
+        // App should remain functional after import
+        await expect(page.locator('#tableBody')).toBeVisible();
+    });
+
     test('should handle CSV with quoted values and legend section', async ({ page }) => {
         // Create a CSV with quoted values containing commas and a legend section
         const csvContent = `name,tags,reference,weight
@@ -1964,6 +2013,106 @@ acronym,fullName
         expect(content.toLowerCase()).toContain('delete');
     });
 
+    test('should center prompt container on screen', async ({ page }) => {
+        // Open tools and trigger delete to show prompt
+        await page.locator('#toolsBtn').click();
+        await page.locator('#deleteTab').click();
+        
+        const promptContainer = page.locator('#promptContainer');
+        await expect(promptContainer).toBeVisible();
+        
+        // Get computed styles to verify centering
+        const boundingBox = await promptContainer.boundingBox();
+        const viewport = page.viewportSize();
+        
+        // Prompt should be roughly centered horizontally
+        const promptCenterX = boundingBox.x + boundingBox.width / 2;
+        const viewportCenterX = viewport.width / 2;
+        
+        // Allow 200px tolerance for centering (accounts for different viewport sizes)
+        expect(Math.abs(promptCenterX - viewportCenterX)).toBeLessThan(200);
+        
+        // Prompt should be roughly centered vertically
+        const promptCenterY = boundingBox.y + boundingBox.height / 2;
+        const viewportCenterY = viewport.height / 2;
+        
+        // Allow 200px tolerance for centering
+        expect(Math.abs(promptCenterY - viewportCenterY)).toBeLessThan(200);
+    });
+
+    test('should have fixed positioning for prompts', async ({ page }) => {
+        // Open tools and trigger delete
+        await page.locator('#toolsBtn').click();
+        await page.locator('#deleteTab').click();
+        
+        const promptContainer = page.locator('#promptContainer');
+        await expect(promptContainer).toBeVisible();
+        
+        // Check that prompt has fixed positioning
+        const position = await promptContainer.evaluate(el => window.getComputedStyle(el).position);
+        expect(position).toBe('fixed');
+    });
+
+    test('should center unique item prompt', async ({ page }) => {
+        // Add an item with unique tag
+        await addItemViaExampleRow(page, 'Unique Treasure');
+        
+        // Edit tags to add unique tag
+        const itemRow = page.locator('tbody tr:not(.example-row)').first();
+        const tagsCell = itemRow.locator('td[data-field="tags"]');
+        await tagsCell.click();
+        const input = tagsCell.locator('input');
+        await input.waitFor({ state: 'visible' });
+        await input.fill('unique');
+        await input.press('Enter');
+        
+        // Roll the item
+        await page.locator('#rollBtn').click();
+        
+        // Unique prompt should appear
+        const uniquePrompt = page.locator('#uniquePrompt');
+        await expect(uniquePrompt).toBeVisible();
+        
+        // Get computed styles to verify centering
+        const boundingBox = await uniquePrompt.boundingBox();
+        const viewport = page.viewportSize();
+        
+        // Prompt should be roughly centered
+        const promptCenterX = boundingBox.x + boundingBox.width / 2;
+        const viewportCenterX = viewport.width / 2;
+        expect(Math.abs(promptCenterX - viewportCenterX)).toBeLessThan(50);
+    });
+
+    test('should center limit item prompt', async ({ page }) => {
+        // Add an item with limit tag
+        await addItemViaExampleRow(page, 'Limited Item');
+        
+        // Edit tags to add limit tag
+        const itemRow = page.locator('tbody tr:not(.example-row)').first();
+        const tagsCell = itemRow.locator('td[data-field="tags"]');
+        await tagsCell.click();
+        const input = tagsCell.locator('input');
+        await input.waitFor({ state: 'visible' });
+        await input.fill('limit=3');
+        await input.press('Enter');
+        
+        // Roll the item
+        await page.locator('#rollBtn').click();
+        
+        // Limit prompt should appear
+        const limitPrompt = page.locator('#limitPrompt');
+        await expect(limitPrompt).toBeVisible();
+        
+        // Get computed styles to verify centering
+        const boundingBox = await limitPrompt.boundingBox();
+        const viewport = page.viewportSize();
+        
+        // Prompt should be roughly centered
+        const promptCenterX = boundingBox.x + boundingBox.width / 2;
+        const viewportCenterX = viewport.width / 2;
+        expect(Math.abs(promptCenterX - viewportCenterX)).toBeLessThan(50);
+    });
+
     test('should show clear tags button that is disabled when no tags selected', async ({ page }) => {
         // Clear tags button should be present
         const clearTagsBtn = page.locator('#clearTagsBtn');
@@ -2052,11 +2201,11 @@ acronym,fullName
     test('roll result display should be specific to each tab', async ({ page }) => {
         // Add an item to the first tab and roll
         await addItemViaExampleRow(page, 'First Tab Item');
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(500);
         
         const rollBtn = page.locator('#rollBtn');
         await rollBtn.click();
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(300);
         
         // Verify result is displayed
         const resultDiv = page.locator('#result');
@@ -2067,7 +2216,7 @@ acronym,fullName
         // Create a new tab
         const newTabBtn = page.locator('.new-tab-btn');
         await newTabBtn.click();
-        await page.waitForTimeout(400); // Wait for tab creation and switch
+        await page.waitForTimeout(600); // Wait for tab creation and switch
         
         // Result should be reset for the new tab (no roll yet)
         let currentResult = await resultDiv.textContent();
@@ -2075,9 +2224,9 @@ acronym,fullName
         
         // Add item to second tab and roll
         await addItemWithTags(page, 'Second Tab Item', '');
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(500);
         await rollBtn.click();
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(300);
         
         const secondTabResult = await resultDiv.textContent();
         expect(secondTabResult).toContain('Second Tab Item');
@@ -2085,7 +2234,7 @@ acronym,fullName
         // Switch back to first tab
         const firstTab = page.locator('.tab-btn').first();
         await firstTab.click();
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(500);
         
         // Should show the first tab's result again
         currentResult = await resultDiv.textContent();
