@@ -20,6 +20,7 @@ let rollHistory = {}; // Per-tab roll history
 let rollResults = {}; // Per-tab roll results
 let pendingImport = null;
 let selectedRows = new Set(); // Track selected row indices for bulk editing
+let pendingUniqueItem = null; // Track the last rolled unique item
 
 // Initialize tabs structure
 let tabs = JSON.parse(localStorage.getItem(TABS_KEY)) || [
@@ -161,6 +162,16 @@ export const UI = {
         // Main Action Buttons
         document.getElementById('rollBtn').addEventListener('click', () => this.handleRoll());
         document.getElementById('copyBtn').addEventListener('click', () => this.copyToClipboard());
+
+        // Unique item inline prompt actions
+        const uniquePromptYes = document.getElementById('uniquePromptYes');
+        const uniquePromptNo = document.getElementById('uniquePromptNo');
+        if (uniquePromptYes) {
+            uniquePromptYes.addEventListener('click', () => this.handleUniquePromptYes());
+        }
+        if (uniquePromptNo) {
+            uniquePromptNo.addEventListener('click', () => this.handleUniquePromptNo());
+        }
 
         // Roll log toggle and clear
         document.getElementById('rollLogToggle').addEventListener('click', () => this.toggleRollLog());
@@ -656,7 +667,53 @@ export const UI = {
             document.getElementById('copyBtn').classList.remove('hidden');
             this.addToHistory(resultText);
             this.renderRollLog();
+
+            // Show unique prompt when applicable
+            const hasUniqueTag = (selectedItem.tags || '').toLowerCase().split(',').map(t => t.trim()).includes('unique');
+            if (hasUniqueTag && selectedItem.weight > 0) {
+                this.showUniquePrompt(selectedItem);
+            } else {
+                this.hideUniquePrompt();
+            }
+        } else {
+            this.hideUniquePrompt();
         }
+    },
+
+    showUniquePrompt(item) {
+        pendingUniqueItem = item;
+        const promptEl = document.getElementById('uniquePrompt');
+        if (promptEl) {
+            promptEl.classList.remove('hidden');
+        }
+    },
+
+    hideUniquePrompt() {
+        pendingUniqueItem = null;
+        const promptEl = document.getElementById('uniquePrompt');
+        if (promptEl && !promptEl.classList.contains('hidden')) {
+            promptEl.classList.add('hidden');
+        }
+    },
+
+    handleUniquePromptYes() {
+        if (!pendingUniqueItem) {
+            this.hideUniquePrompt();
+            return;
+        }
+
+        const items = data[currentTab];
+        const idx = items.indexOf(pendingUniqueItem);
+        if (idx > -1) {
+            items[idx].weight = 0;
+            localStorage.setItem(STORAGE_KEY + currentTab, JSON.stringify(items));
+            this.renderList();
+        }
+        this.hideUniquePrompt();
+    },
+
+    handleUniquePromptNo() {
+        this.hideUniquePrompt();
     },
 
     getFilteredList() {
@@ -702,7 +759,7 @@ export const UI = {
                 <td class="editable" data-field="name">${capitalizeWords(item.name)}</td>
                 <td class="editable" data-field="tags">${capitalizeWords(item.tags || '')}</td>
                 <td class="editable" data-field="reference">${capitalizeWords(item.reference || '')}</td>
-                <td class="editable" data-field="weight">${item.weight || 1}</td>
+                <td class="editable" data-field="weight">${Number.isFinite(item.weight) ? item.weight : 0}</td>
                 <td><button class="btn-delete" data-index="${originalIndex}">×</button></td>
             </tr>
         `}).join('');
@@ -903,7 +960,7 @@ export const UI = {
         input.className = 'cell-input';
         
         if (fieldName === 'weight') {
-            input.min = '1';
+            input.min = '0';
             input.max = '100';
         }
         
@@ -1118,7 +1175,7 @@ export const UI = {
                     name: '',
                     tags: '',
                     reference: '',
-                    weight: 40
+                    weight: 50
                 };
                 
                 // Get current values from the row
@@ -1610,7 +1667,7 @@ export const UI = {
         if (isNaN(parsed)) {
             return WEIGHT_DEFAULT;
         }
-        return Math.max(1, Math.min(100, parsed));
+        return Math.max(0, Math.min(100, parsed));
     },
 
     preventCSVInjection(value) {

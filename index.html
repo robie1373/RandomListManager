@@ -130,6 +130,13 @@
             <div id="result">Ready to roll...</div>
             <button id="copyBtn" class="hidden"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copy</button>
             <button id="rollBtn" class="btn-random"><svg class="icon" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="20" height="20" rx="2" fill="none"/><circle cx="7" cy="7" r="1.5"/><circle cx="17" cy="7" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="7" cy="17" r="1.5"/><circle cx="17" cy="17" r="1.5"/></svg> Roll on Table</button>
+            <div id="uniquePrompt" class="unique-prompt hidden" role="status">
+                <div class="unique-prompt-text">This is marked as unique. Would you like to set the weight to zero so it cannot be rolled again?</div>
+                <div class="unique-prompt-actions">
+                    <button id="uniquePromptYes" class="btn-inline primary">Yes, set to zero</button>
+                    <button id="uniquePromptNo" class="btn-inline">No</button>
+                </div>
+            </div>
         </div>
         
         <!-- Roll Log -->

@@ -28,10 +28,10 @@ export const DiceEngine = {
     pickWeightedItem: (list) => {
         if (!list || list.length === 0) return null;
         
-        // Constrain weights between 1 and 100, default to 40
+        // Constrain weights between 0 and 100, default to 50
         const constrainWeight = (weight) => {
-            const w = weight !== undefined && weight !== null ? weight : 40;
-            return Math.max(1, Math.min(100, w));
+            const w = weight !== undefined && weight !== null ? weight : 50;
+            return Math.max(0, Math.min(100, w));
         };
         
         const totalWeight = list.reduce((sum, item) => sum + constrainWeight(item.weight), 0);
@@ -57,17 +57,17 @@ export const UIUtils = {
     },
 
     /**
-     * Constrain weight between 1 and 100, default to 40
+     * Constrain weight between 0 and 100, default to 50
      */
     constrainWeight: (weight) => {
-        const w = weight !== undefined && weight !== null ? weight : 40;
-        return Math.max(1, Math.min(100, w));
+        const w = weight !== undefined && weight !== null ? weight : 50;
+        return Math.max(0, Math.min(100, w));
     },
 
     /**
      * Create a normalized item with default values
      */
-    createItem: (name, tags = '', reference = '', weight = 40) => ({
+    createItem: (name, tags = '', reference = '', weight = 50) => ({
         name: name || '',
         tags: tags || '',
         reference: reference || '',
