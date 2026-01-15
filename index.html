@@ -19,7 +19,10 @@
     <div id="app">
         <!-- Navigation Header -->
         <header class="nav-header">
-            <h1 class="app-title">Random List Manager</h1>
+            <div class="app-title-wrapper">
+                <h1 class="app-title">Random List Manager</h1>
+                <span id="appVersion" class="app-version"></span>
+            </div>
             <button id="toolsBtn" class="tools-btn" aria-label="Tools menu">
                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M12 1v6m0 6v6"></path><path d="M4.22 4.22l4.24 4.24m6.08 0l4.24-4.24"></path><path d="M1 12h6m6 0h6"></path><path d="M4.22 19.78l4.24-4.24m6.08 0l4.24 4.24"></path></svg>
                 Tools
@@ -215,12 +218,35 @@
             window.lucide.createIcons();
         }
 
-        // Register service worker
+        // Register service worker in production only; auto-unregister on localhost for dev.
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('./sw.js')
-                .then(reg => console.log('Service Worker registered'))
-                .catch(err => console.log('Service Worker registration failed:', err));
+            const isLocalhost = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
+
+            if (isLocalhost) {
+                navigator.serviceWorker.getRegistrations()
+                    .then(regs => regs.forEach(reg => reg.unregister()))
+                    .catch(() => {});
+            } else {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(() => console.log('Service Worker registered'))
+                    .catch(err => console.log('Service Worker registration failed:', err));
+            }
         }
+    </script>
+    <script type="module">
+        // Fetch package.json to display current app version in the header.
+        fetch('package.json')
+            .then(response => response.ok ? response.json() : null)
+            .then(pkg => {
+                if (!pkg || !pkg.version) return;
+                const versionEl = document.getElementById('appVersion');
+                if (versionEl) {
+                    versionEl.textContent = `v${pkg.version}`;
+                }
+            })
+            .catch(() => {
+                // Ignore fetch errors; version display is optional.
+            });
     </script>
 </body>
 </html>

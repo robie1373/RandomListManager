@@ -19,6 +19,10 @@
       "approve": true,
       "matchCommandLine": true
     },
-    "timeout": true
+    "timeout": true,
+    "/^python3 -m http\\.server 5500$/": {
+      "approve": true,
+      "matchCommandLine": true
+    }
   }
 }

@@ -109,6 +109,12 @@ body {
     border-bottom: 1px solid rgba(0, 0, 0, 0.1);
 }
 
+.app-title-wrapper {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+}
+
 .app-title {
     margin: 0;
     font-size: 1.5rem;
@@ -116,6 +122,17 @@ body {
     color: #ffffff;
     letter-spacing: -0.02em;
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.app-version {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
+    background: rgba(255, 255, 255, 0.14);
+    padding: 2px 8px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.24);
+    letter-spacing: 0.02em;
 }
 
 .tools-btn {

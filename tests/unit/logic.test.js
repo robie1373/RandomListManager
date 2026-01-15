@@ -33,6 +33,28 @@ describe('DiceEngine - parseDice', () => {
         expect(result).toMatch(/\d+ \(1d10-3\)/);
     });
 
+    it('handles multiplication modifier', () => {
+        const result = DiceEngine.parseDice("2d6x10");
+        const match = result.match(/^(\d+) \(2d6x10\)$/);
+        expect(match).not.toBeNull();
+
+        const value = parseInt(match[1], 10);
+        expect(value % 10).toBe(0);
+        expect(value).toBeGreaterThanOrEqual(20);
+        expect(value).toBeLessThanOrEqual(120);
+    });
+
+    it('handles multiplication when wrapped in parentheses', () => {
+        const result = DiceEngine.parseDice("(3d6)x10");
+        const match = result.match(/^(\d+) \(3d6x10\)$/);
+        expect(match).not.toBeNull();
+
+        const value = parseInt(match[1], 10);
+        expect(value % 10).toBe(0);
+        expect(value).toBeGreaterThanOrEqual(30);
+        expect(value).toBeLessThanOrEqual(180);
+    });
+
     it('handles multiple dice (3d6)', () => {
         const result = DiceEngine.parseDice("3d6");
         expect(result).toMatch(/\d+ \(3d6\)/);
@@ -40,12 +62,12 @@ describe('DiceEngine - parseDice', () => {
 
     it('handles whitespace around operators', () => {
         const result = DiceEngine.parseDice("1d6 + 5");
-        expect(result).toMatch(/\d+ \(1d6 \+ 5\)/);
+        expect(result).toMatch(/\d+ \(1d6\+5\)/);
     });
 
     it('case-insensitive for dice notation', () => {
         const result = DiceEngine.parseDice("2D4");
-        expect(result).toMatch(/\d+ \(2D4\)/);
+        expect(result).toMatch(/\d+ \(2d4\)/);
     });
 });
 
