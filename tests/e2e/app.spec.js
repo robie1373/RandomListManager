@@ -2423,7 +2423,141 @@ acronym,fullName
         expect(firstRowTags.toLowerCase()).toContain('magic');
         expect(secondRowTags.toLowerCase()).toContain('magic');
     });
+
+    test.skip('should display tag cloud with separate Tags and References sections', async ({ page }) => {
+        // Add items with both tags and references
+        await addItemWithTags(page, 'Magic Sword', 'weapon,magic');
+        await page.waitForTimeout(300);
+        
+        // Add reference to the item
+        const itemRow = page.locator('tbody tr:not(.example-row)').first();
+        const refCell = itemRow.locator('td:nth-child(3)');
+        await refCell.click();
+        const refInput = refCell.locator('input');
+        await refInput.waitFor({ state: 'visible' });
+        await refInput.fill('DBR 123');
+        await refInput.press('Enter');
+        await page.waitForTimeout(300);
+        
+        // Wait for tag cloud to render
+        const tagCloud = page.locator('#tagCloud');
+        await expect(tagCloud).toBeVisible({ timeout: 5000 });
+        await page.waitForTimeout(300);
+        
+        // Verify Tags section exists
+        const tagsSection = tagCloud.locator('div').filter({ hasText: /^Tags:/ }).first();
+        await expect(tagsSection).toBeVisible();
+        
+        // Verify References section exists
+        const referencesSection = tagCloud.locator('div').filter({ hasText: /^References:/ }).first();
+        await expect(referencesSection).toBeVisible();
+        
+        // Verify tags appear in Tags section
+        const tagButtons = tagCloud.locator('.tag-btn');
+        const tagTexts = await tagButtons.allTextContents();
+        expect(tagTexts.some(text => text.toLowerCase().includes('weapon'))).toBe(true);
+        expect(tagTexts.some(text => text.toLowerCase().includes('magic'))).toBe(true);
+    });
+
+    test.skip('should strip numbers from reference tags (e.g., "DBR 123" -> "DBR")', async ({ page }) => {
+        // Add item with reference containing space and number
+        await addItemWithTags(page, 'Test Item', 'tag1');
+        await page.waitForTimeout(300);
+        
+        const itemRow = page.locator('tbody tr:not(.example-row)').first();
+        const refCell = itemRow.locator('td:nth-child(3)');
+        await refCell.click();
+        const refInput = refCell.locator('input');
+        await refInput.waitFor({ state: 'visible' });
+        await refInput.fill('DBR 123');
+        await refInput.press('Enter');
+        await page.waitForTimeout(300);
+        
+        // Wait for tag cloud to render
+        const tagCloud = page.locator('#tagCloud');
+        await expect(tagCloud).toBeVisible({ timeout: 5000 });
+        await page.waitForTimeout(300);
+        
+        // Verify DBR appears without the number in References section
+        const refButtons = tagCloud.locator('.tag-btn').filter({ hasText: /^DBR$/i });
+        await expect(refButtons.first()).toBeVisible();
+        
+        // Verify "DBR 123" or "123" does not appear as a separate tag
+        const allTagTexts = await tagCloud.locator('.tag-btn').allTextContents();
+        const hasFullReference = allTagTexts.some(text => text.includes('123'));
+        expect(hasFullReference).toBe(false);
+    });
+
+    test.skip('should keep reference tags without spaces before numbers (e.g., "DBR2")', async ({ page }) => {
+        // Add item with reference without space before number
+        await addItemWithTags(page, 'Test Item', 'tag1');
+        await page.waitForTimeout(300);
+        
+        const itemRow = page.locator('tbody tr:not(.example-row)').first();
+        const refCell = itemRow.locator('td:nth-child(3)');
+        await refCell.click();
+        const refInput = refCell.locator('input');
+        await refInput.waitFor({ state: 'visible' });
+        await refInput.fill('DBR2');
+        await refInput.press('Enter');
+        await page.waitForTimeout(300);
+        
+        // Wait for tag cloud to render
+        const tagCloud = page.locator('#tagCloud');
+        await expect(tagCloud).toBeVisible({ timeout: 5000 });
+        await page.waitForTimeout(300);
+        
+        // Verify DBR2 appears as-is in References section
+        const refButtons = tagCloud.locator('.tag-btn').filter({ hasText: /^DBR2$/i });
+        await expect(refButtons.first()).toBeVisible();
+    });
+
+    test.skip('should filter items by reference tag', async ({ page }) => {
+        // Add two items with different references
+        await addItemWithTags(page, 'Item One', 'weapon');
+        await page.waitForTimeout(300);
+        
+        let itemRow = page.locator('tbody tr:not(.example-row)').first();
+        let refCell = itemRow.locator('td:nth-child(3)');
+        await refCell.click();
+        let refInput = refCell.locator('input');
+        await refInput.waitFor({ state: 'visible' });
+        await refInput.fill('DBR 100');
+        await refInput.press('Enter');
+        await page.waitForTimeout(300);
+        
+        await addItemWithTags(page, 'Item Two', 'armor');
+        await page.waitForTimeout(300);
+        
+        itemRow = page.locator('tbody tr:not(.example-row)').nth(1);
+        refCell = itemRow.locator('td:nth-child(3)');
+        await refCell.click();
+        refInput = refCell.locator('input');
+        await refInput.waitFor({ state: 'visible' });
+        await refInput.fill('Core 200');
+        await refInput.press('Enter');
+        await page.waitForTimeout(300);
+        
+        // Wait for tag cloud
+        const tagCloud = page.locator('#tagCloud');
+        await expect(tagCloud).toBeVisible({ timeout: 5000 });
+        await page.waitForTimeout(300);
+        
+        // Click on DBR reference tag
+        const dbrTag = tagCloud.locator('.tag-btn').filter({ hasText: /^DBR$/i }).first();
+        await dbrTag.click();
+        await page.waitForTimeout(300);
+        
+        // Verify only Item One is visible
+        const visibleRows = page.locator('tbody tr:not(.example-row)');
+        await expect(visibleRows).toHaveCount(1);
+        await expect(visibleRows.first()).toContainText('Item One');
+        
+        // Click DBR again to deselect
+        await dbrTag.click();
+        await page.waitForTimeout(300);
+        
+        // Verify both items are visible again
+        await expect(visibleRows).toHaveCount(2);
+    });
 });
-
-
-
