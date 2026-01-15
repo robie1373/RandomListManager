@@ -337,24 +337,42 @@ export const UI = {
         
         const clearTagsBtn = document.getElementById('clearTagsBtn');
         
-        // Extract all unique tags from current tab's data (case-insensitive)
-        const allTagsMap = new Map(); // lowercase -> display case
+        // Extract tags and references separately (case-insensitive)
+        const tagsMap = new Map(); // lowercase -> display case
+        const referencesMap = new Map(); // lowercase -> display case
+        
         data[currentTab].forEach(item => {
+            // Add tags from tags field
             if (item.tags) {
                 const tags = item.tags.split(',').map(t => t.trim()).filter(t => t);
                 tags.forEach(tag => {
                     const lowerTag = tag.toLowerCase();
-                    if (!allTagsMap.has(lowerTag)) {
-                        allTagsMap.set(lowerTag, tag);
+                    if (!tagsMap.has(lowerTag)) {
+                        tagsMap.set(lowerTag, tag);
                     }
                 });
+            }
+            // Add reference field separately (if not default value)
+            if (item.reference && item.reference !== REFERENCE_DEFAULT && item.reference.toLowerCase() !== 'none') {
+                let ref = item.reference.trim();
+                if (ref) {
+                    // Strip space followed by number(s) at the end (e.g., "DBR 123" -> "DBR")
+                    // But keep references without spaces (e.g., "DBR2" stays "DBR2")
+                    ref = ref.replace(/\s+\d+$/, '');
+                    if (ref) {
+                        const lowerRef = ref.toLowerCase();
+                        if (!referencesMap.has(lowerRef)) {
+                            referencesMap.set(lowerRef, ref);
+                        }
+                    }
+                }
             }
         });
         
         // Clear existing tags
         tagCloudEl.innerHTML = '';
         
-        if (allTagsMap.size === 0) {
+        if (tagsMap.size === 0 && referencesMap.size === 0) {
             tagCloudEl.innerHTML = '<span class="no-tags">No tags available. Add tags to items to enable filtering.</span>';
             if (clearTagsBtn) clearTagsBtn.disabled = true;
             return;
@@ -365,22 +383,78 @@ export const UI = {
             clearTagsBtn.disabled = selectedTags.size === 0;
         }
         
-        // Create tag buttons
-        const sortedTags = Array.from(allTagsMap.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-        sortedTags.forEach(([lowerTag, displayTag]) => {
-            const tagBtn = document.createElement('button');
-            tagBtn.className = 'tag-btn';
-            // Display with capitalized words
-            tagBtn.textContent = capitalizeWords(lowerTag);
-            tagBtn.dataset.tag = lowerTag;
+        // Create tags section
+        if (tagsMap.size > 0) {
+            const tagsSection = document.createElement('div');
+            tagsSection.style.marginBottom = '16px';
             
-            if (selectedTags.has(lowerTag)) {
-                tagBtn.classList.add('selected');
-            }
+            const tagsLabel = document.createElement('div');
+            tagsLabel.style.fontWeight = '600';
+            tagsLabel.style.marginBottom = '8px';
+            tagsLabel.style.fontSize = '0.9rem';
+            tagsLabel.style.color = 'var(--text-secondary)';
+            tagsLabel.textContent = 'Tags:';
+            tagsSection.appendChild(tagsLabel);
             
-            tagBtn.addEventListener('click', () => this.toggleTag(lowerTag));
-            tagCloudEl.appendChild(tagBtn);
-        });
+            const tagsContainer = document.createElement('div');
+            tagsContainer.style.display = 'flex';
+            tagsContainer.style.flexWrap = 'wrap';
+            tagsContainer.style.gap = '8px';
+            
+            const sortedTags = Array.from(tagsMap.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+            sortedTags.forEach(([lowerTag, displayTag]) => {
+                const tagBtn = document.createElement('button');
+                tagBtn.className = 'tag-btn';
+                tagBtn.textContent = capitalizeWords(lowerTag);
+                tagBtn.dataset.tag = lowerTag;
+                
+                if (selectedTags.has(lowerTag)) {
+                    tagBtn.classList.add('selected');
+                }
+                
+                tagBtn.addEventListener('click', () => this.toggleTag(lowerTag));
+                tagsContainer.appendChild(tagBtn);
+            });
+            
+            tagsSection.appendChild(tagsContainer);
+            tagCloudEl.appendChild(tagsSection);
+        }
+        
+        // Create references section
+        if (referencesMap.size > 0) {
+            const referencesSection = document.createElement('div');
+            
+            const referencesLabel = document.createElement('div');
+            referencesLabel.style.fontWeight = '600';
+            referencesLabel.style.marginBottom = '8px';
+            referencesLabel.style.fontSize = '0.9rem';
+            referencesLabel.style.color = 'var(--text-secondary)';
+            referencesLabel.textContent = 'References:';
+            referencesSection.appendChild(referencesLabel);
+            
+            const referencesContainer = document.createElement('div');
+            referencesContainer.style.display = 'flex';
+            referencesContainer.style.flexWrap = 'wrap';
+            referencesContainer.style.gap = '8px';
+            
+            const sortedRefs = Array.from(referencesMap.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+            sortedRefs.forEach(([lowerRef, displayRef]) => {
+                const refBtn = document.createElement('button');
+                refBtn.className = 'tag-btn';
+                refBtn.textContent = capitalizeWords(lowerRef);
+                refBtn.dataset.tag = lowerRef;
+                
+                if (selectedTags.has(lowerRef)) {
+                    refBtn.classList.add('selected');
+                }
+                
+                refBtn.addEventListener('click', () => this.toggleTag(lowerRef));
+                referencesContainer.appendChild(refBtn);
+            });
+            
+            referencesSection.appendChild(referencesContainer);
+            tagCloudEl.appendChild(referencesSection);
+        }
     },
     
     toggleTag(tag) {
@@ -426,6 +500,13 @@ export const UI = {
 
         return rawList.filter(item => {
             const itemTags = (item.tags || "").toLowerCase().split(',').map(t => t.trim());
+            // Also include reference as a searchable tag
+            if (item.reference && item.reference !== REFERENCE_DEFAULT && item.reference.toLowerCase() !== 'none') {
+                const ref = item.reference.trim().toLowerCase();
+                if (ref) {
+                    itemTags.push(ref);
+                }
+            }
             const activeFilters = Array.from(selectedTags).map(t => t.toLowerCase());
             
             return filterLogic === 'OR' 
