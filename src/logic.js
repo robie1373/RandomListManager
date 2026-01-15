@@ -1,0 +1,99 @@
+// src/logic.js
+export const DiceEngine = {
+    parseDice: (text) => {
+        const diceRegex = /(\d+)d(\d+)(?:\s*([+-])\s*(\d+))?/gi;
+        return text.replace(diceRegex, (match, count, sides, op, mod) => {
+            let total = 0;
+            for (let i = 0; i < parseInt(count); i++) {
+                total += Math.floor(Math.random() * parseInt(sides)) + 1;
+            }
+            if (op && mod) {
+                total = op === '+' ? total + parseInt(mod) : total - parseInt(mod);
+            }
+            return `${total} (${match})`;
+        });
+    },
+
+    pickWeightedItem: (list) => {
+        if (!list || list.length === 0) return null;
+        
+        // Constrain weights between 1 and 100, default to 40
+        const constrainWeight = (weight) => {
+            const w = weight !== undefined && weight !== null ? weight : 40;
+            return Math.max(1, Math.min(100, w));
+        };
+        
+        const totalWeight = list.reduce((sum, item) => sum + constrainWeight(item.weight), 0);
+        let random = Math.random() * totalWeight;
+        for (const item of list) {
+            const constrainedWeight = constrainWeight(item.weight);
+            if (random < constrainedWeight) return item;
+            random -= constrainedWeight;
+        }
+        return list[0];
+    }
+};
+
+// --- UI Utility Functions ---
+
+export const UIUtils = {
+    /**
+     * Format tab name for display (e.g., "items" -> "Item")
+     */
+    formatTabLabel: (tabName) => {
+        if (!tabName) return '';
+        return tabName.charAt(0).toUpperCase() + tabName.slice(1).slice(0, -1);
+    },
+
+    /**
+     * Constrain weight between 1 and 100, default to 40
+     */
+    constrainWeight: (weight) => {
+        const w = weight !== undefined && weight !== null ? weight : 40;
+        return Math.max(1, Math.min(100, w));
+    },
+
+    /**
+     * Create a normalized item with default values
+     */
+    createItem: (name, tags = '', reference = '', weight = 40) => ({
+        name: name || '',
+        tags: tags || '',
+        reference: reference || '',
+        weight: UIUtils.constrainWeight(weight),
+        ref: '' // Legacy field for compatibility
+    }),
+
+    /**
+     * Normalize an existing item to ensure all properties are present and constrained
+     */
+    normalizeItem: (item) => {
+        if (!item || typeof item !== 'object') return null;
+        return {
+            name: item.name || '',
+            tags: item.tags || '',
+            reference: item.reference || '',
+            weight: UIUtils.constrainWeight(item.weight),
+            ref: item.ref || ''
+        };
+    },
+
+    /**
+     * Filter items by tags with OR/AND logic
+     */
+    filterItems: (items, selectedTags, filterLogic = 'OR') => {
+        if (!items || items.length === 0) return [];
+        if (!selectedTags || selectedTags.size === 0) return items;
+
+        const tagSet = typeof selectedTags === 'string' ? new Set(selectedTags.split(',')) : selectedTags;
+        
+        return items.filter(item => {
+            const itemTags = (item.tags || "").toLowerCase().split(',').map(t => t.trim());
+            const activeFilters = Array.from(tagSet).map(t => t.toString().toLowerCase());
+            
+            return filterLogic === 'OR' 
+                ? activeFilters.some(ft => itemTags.includes(ft)) 
+                : activeFilters.every(ft => itemTags.includes(ft));
+        });
+    }
+};
