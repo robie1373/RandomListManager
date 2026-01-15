@@ -51,6 +51,7 @@ export const UI = {
         this.renderTabs();
         this.bindEvents();
         this.switchTab(tabs[0].id); // This calls renderTagCloud and renderList
+        this.updateBulkEditPanel(); // Keep bulk edit hidden until a selection exists
     },
 
     renderTabs() {
