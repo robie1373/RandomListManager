@@ -96,7 +96,7 @@
                 </ul>
                 
                 <p style="margin-top: 20px; font-style: italic; color: #999;">
-                    <strong>Version:</strong> 1.0.0 | Built with vanilla JavaScript | Data stays local, never shared
+                    <strong>Version:</strong> <span id="aboutVersion">1.0.0</span> | Built with vanilla JavaScript | Data stays local, never shared
                 </p>
             </div>
         </div>
@@ -242,6 +242,10 @@
                 const versionEl = document.getElementById('appVersion');
                 if (versionEl) {
                     versionEl.textContent = `v${pkg.version}`;
+                }
+                const aboutVersionEl = document.getElementById('aboutVersion');
+                if (aboutVersionEl) {
+                    aboutVersionEl.textContent = pkg.version;
                 }
             })
             .catch(() => {
