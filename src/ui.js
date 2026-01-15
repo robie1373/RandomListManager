@@ -188,20 +188,27 @@ export const UI = {
         document.getElementById('rollLogToggle').addEventListener('click', () => this.toggleRollLog());
         document.getElementById('clearRollLog').addEventListener('click', () => this.clearRollLog());
 
-        // Tools Menu
+        // Tools Modal
         const toolsBtn = document.getElementById('toolsBtn');
         const toolsMenu = document.getElementById('toolsMenu');
-        toolsBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            toolsMenu.classList.toggle('hidden');
-        });
-
-        // Close menu when clicking outside
-        document.addEventListener('click', (e) => {
-            if (!toolsMenu.contains(e.target) && !toolsBtn.contains(e.target)) {
-                toolsMenu.classList.add('hidden');
-            }
-        });
+        if (toolsBtn) {
+            toolsBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.showTools();
+            });
+        }
+        if (document.getElementById('closeTools')) {
+            document.getElementById('closeTools').addEventListener('click', () => {
+                this.hideTools();
+            });
+        }
+        if (toolsMenu) {
+            toolsMenu.addEventListener('click', (e) => {
+                if (e.target.id === 'toolsMenu') {
+                    this.hideTools();
+                }
+            });
+        }
 
         // Dark Mode Toggle
         const darkModeToggle = document.getElementById('darkModeToggle');
@@ -222,31 +229,31 @@ export const UI = {
         // Export buttons
         document.getElementById('exportCSV').addEventListener('click', () => {
             this.exportData('csv');
-            toolsMenu.classList.add('hidden');
+            this.hideTools();
         });
         document.getElementById('exportJSON').addEventListener('click', () => {
             this.exportData('json');
-            toolsMenu.classList.add('hidden');
+            this.hideTools();
         });
         document.getElementById('exportXLSX').addEventListener('click', () => {
             this.exportData('xlsx');
-            toolsMenu.classList.add('hidden');
+            this.hideTools();
         });
         document.getElementById('exportAllTabs').addEventListener('click', () => {
             this.exportAllTabs();
-            toolsMenu.classList.add('hidden');
+            this.hideTools();
         });
 
         // Delete tab
         document.getElementById('deleteTab').addEventListener('click', () => {
             this.promptDeleteTab();
-            toolsMenu.classList.add('hidden');
+            this.hideTools();
         });
 
         // About button
         document.getElementById('aboutBtn').addEventListener('click', () => {
             this.showAbout();
-            toolsMenu.classList.add('hidden');
+            this.hideTools();
         });
         document.getElementById('closeAbout').addEventListener('click', () => {
             this.hideAbout();
@@ -256,6 +263,28 @@ export const UI = {
                 this.hideAbout();
             }
         });
+
+        // Tips and Tricks button
+        const tipsBtn = document.getElementById('tipsBtn');
+        const tipsModal = document.getElementById('tipsModal');
+        if (tipsBtn) {
+            tipsBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.showTips();
+            });
+        }
+        if (document.getElementById('closeTips')) {
+            document.getElementById('closeTips').addEventListener('click', () => {
+                this.hideTips();
+            });
+        }
+        if (tipsModal) {
+            tipsModal.addEventListener('click', (e) => {
+                if (e.target.id === 'tipsModal') {
+                    this.hideTips();
+                }
+            });
+        }
 
         // Import button
         const importFileInput = document.getElementById('importFileInput');
@@ -2182,6 +2211,34 @@ export const UI = {
     hideAbout() {
         const modal = document.getElementById('aboutModal');
         modal.classList.add('hidden');
+    },
+
+    showTips() {
+        const modal = document.getElementById('tipsModal');
+        if (modal) {
+            modal.classList.remove('hidden');
+        }
+    },
+
+    hideTips() {
+        const modal = document.getElementById('tipsModal');
+        if (modal) {
+            modal.classList.add('hidden');
+        }
+    },
+
+    showTools() {
+        const modal = document.getElementById('toolsMenu');
+        if (modal) {
+            modal.classList.remove('hidden');
+        }
+    },
+
+    hideTools() {
+        const modal = document.getElementById('toolsMenu');
+        if (modal) {
+            modal.classList.add('hidden');
+        }
     }
 };
 
