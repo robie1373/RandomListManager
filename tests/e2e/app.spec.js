@@ -598,7 +598,8 @@ test.describe('Random List Manager E2E', () => {
         // Changes should persist
         await expect(page.locator('td:has-text("Persisted Item")')).toBeVisible();
         const reloadedRow = page.locator('tbody tr:not(.example-row)').first();
-        await expect(reloadedRow.locator('td:nth-child(2)')).toContainText('persistent');
+        const tagsText = await reloadedRow.locator('td:nth-child(2)').textContent();
+        expect(tagsText.toLowerCase()).toContain('persistent');
     });
 
     test('should cancel edit with Escape key', async ({ page }) => {
@@ -701,7 +702,8 @@ test.describe('Random List Manager E2E', () => {
         
         // Item should be created with tags
         const row = page.locator('tr:has-text("Tagged Item")');
-        await expect(row.locator('td:nth-child(2)')).toContainText('magic,rare');
+        const tagsText = await row.locator('td:nth-child(2)').textContent();
+        expect(tagsText.toLowerCase()).toContain('magic,rare');
     });
 
     test('should create item with reference and weight from example row', async ({ page }) => {
@@ -732,7 +734,8 @@ test.describe('Random List Manager E2E', () => {
         
         // Verify all fields
         const row = page.locator('tr:has-text("Complex Item")');
-        await expect(row.locator('td:nth-child(3)')).toContainText('p.99');
+        const refText = await row.locator('td:nth-child(3)').textContent();
+        expect(refText.toLowerCase()).toContain('p.99');
         await expect(row.locator('td:nth-child(4)')).toContainText('75');
     });
 

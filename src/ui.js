@@ -10,8 +10,8 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const MAX_FIELD_LENGTH = 500; // for name, tags, reference
 const MAX_TAB_NAME_LENGTH = 100;
 const WEIGHT_DEFAULT = 50;
-const REFERENCE_DEFAULT = 'TBD';
-const TAGS_DEFAULT = 'tbd';
+const REFERENCE_DEFAULT = 'None';
+const TAGS_DEFAULT = 'TBD';
 
 let currentTab = 'items';
 let filterLogic = 'OR';
@@ -1611,7 +1611,7 @@ export const UI = {
             // Validate weight - must be integer 1-100, default to 50
             const weight = this.sanitizeWeight(item.weight);
             
-            // Validate reference - must be string, default to TBD
+            // Validate reference - must be string, default to None
             let reference = (item.reference || '').trim();
             if (!reference) {
                 reference = REFERENCE_DEFAULT;
@@ -1624,7 +1624,7 @@ export const UI = {
                 }
             }
             
-            // Validate tags - must be string, default to tbd
+            // Validate tags - must be string, default to TBD
             let tags = (item.tags || '').trim();
             if (!tags) {
                 tags = TAGS_DEFAULT;
