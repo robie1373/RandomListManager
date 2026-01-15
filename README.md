@@ -17,6 +17,35 @@ A lightweight, offline-capable web application for managing random encounter tab
 
 ## Recent Changes
 
+### Version 1.15.1 (January 2026)
+
+#### New Features
+- **Multi-File Import**: Import multiple files sequentially with prompt between each
+  - File browser now accepts multiple file selection
+  - Each file is processed in order, waiting for user response (overwrite/append) before next
+  - Allows batch importing of data from multiple sources
+
+#### UI Improvements
+- **Centered Prompts**: All inline prompts now display centered on screen
+  - Unique item prompts centered
+  - Limit tag prompts centered
+  - Import conflict prompts centered
+  - Better visual hierarchy and focus
+
+#### Removals
+- **Removed Autocomplete Feature**: Simplified tag editing
+  - Removed tag autocomplete dropdown suggestions
+  - Users can now freely edit tags without suggestions
+  - Cleaner UI and reduced complexity
+  - 5 autocomplete-related tests removed (159 tests now passing)
+
+#### Technical Improvements
+- Added `importQueue` for sequential multi-file processing
+- Added `processNextImportFile()` method to handle queue
+- Updated file input event handler to queue all selected files
+- Modified import callbacks to process next file after completion
+- Fixed centered positioning for all modal prompts
+
 ### Version 1.15.0 (January 2026)
 
 #### New Features
