@@ -91,7 +91,7 @@ export const UI = {
         input.className = 'tab-name-edit';
         
         const saveEdit = () => {
-            const newName = input.value.trim();
+            const newName = input.value.trim().replace(/\s+/g, '_');
             if (newName && newName !== tab.name) {
                 tab.name = newName;
                 this.saveTabs();
