@@ -724,8 +724,7 @@ export const UI = {
         let item = null;
         if (!isExampleRow) {
             const itemIndex = parseInt(row.getAttribute('data-item-index'));
-            const filtered = this.getFilteredList();
-            item = filtered[itemIndex];
+            item = data[currentTab][itemIndex];
             if (!item) return;
         }
         
