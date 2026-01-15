@@ -16,6 +16,7 @@ const TAGS_DEFAULT = 'TBD';
 let currentTab = 'items';
 let filterLogic = 'OR';
 let selectedTags = new Set();
+let searchTerm = ''; // Track search term for real-time filtering
 let rollHistory = {}; // Per-tab roll history
 let rollResults = {}; // Per-tab roll results
 let pendingImport = null;
@@ -350,6 +351,19 @@ export const UI = {
             });
         });
 
+        // Search input
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                searchTerm = e.target.value.toLowerCase().trim();
+                console.log('Search term updated:', searchTerm);
+                this.renderTagCloud();
+                this.renderList();
+            });
+        } else {
+            console.warn('Search input element not found');
+        }
+
         // Clear tags button
         document.getElementById('clearTagsBtn').addEventListener('click', () => this.clearAllTags());
         
@@ -371,6 +385,13 @@ export const UI = {
 
     switchTab(tab) {
         currentTab = tab;
+        
+        // Clear search when switching tabs
+        searchTerm = '';
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) {
+            searchInput.value = '';
+        }
         
         // Update CSS classes for active tabs
         document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -553,11 +574,20 @@ export const UI = {
         
         const clearTagsBtn = document.getElementById('clearTagsBtn');
         
-        // Extract tags and references separately (case-insensitive)
+        // Extract tags and references from search-filtered items
         const tagsMap = new Map(); // lowercase -> display case
         const referencesMap = new Map(); // lowercase -> display case
         
-        data[currentTab].forEach(item => {
+        // Apply search filter first to get only relevant items
+        const itemsToProcess = data[currentTab].filter(item => {
+            if (!searchTerm) return true;
+            const name = (item.name || '').toLowerCase();
+            const tags = (item.tags || '').toLowerCase();
+            const reference = (item.reference || '').toLowerCase();
+            return name.includes(searchTerm) || tags.includes(searchTerm) || reference.includes(searchTerm);
+        });
+        
+        itemsToProcess.forEach(item => {
             // Add tags from tags field
             if (item.tags) {
                 const tags = item.tags.split(',').map(t => t.trim()).filter(t => t);
@@ -842,9 +872,22 @@ export const UI = {
 
     getFilteredList() {
         const rawList = data[currentTab];
-        if (selectedTags.size === 0) return rawList;
+        
+        // Apply search filter
+        let searchFiltered = rawList;
+        if (searchTerm) {
+            searchFiltered = rawList.filter(item => {
+                const name = (item.name || '').toLowerCase();
+                const tags = (item.tags || '').toLowerCase();
+                const reference = (item.reference || '').toLowerCase();
+                return name.includes(searchTerm) || tags.includes(searchTerm) || reference.includes(searchTerm);
+            });
+        }
+        
+        // Apply tag filter
+        if (selectedTags.size === 0) return searchFiltered;
 
-        return rawList.filter(item => {
+        return searchFiltered.filter(item => {
             const itemTags = (item.tags || "").toLowerCase().split(',').map(t => t.trim());
             // Also include reference as a searchable tag
             if (item.reference && item.reference !== REFERENCE_DEFAULT && item.reference.toLowerCase() !== 'none') {
@@ -879,8 +922,8 @@ export const UI = {
         const tabLabel = currentTabObj ? currentTabObj.name.replace(/s$/, '') : 'Item';
         nameHeader.textContent = tabLabel;
         
-        // Render filtered items but preserve original indices for operations
-        const itemsToShow = selectedTags.size === 0 ? allItems : filtered;
+        // Always use filtered list (which includes both search and tag filtering)
+        const itemsToShow = filtered;
         const itemsHTML = itemsToShow.map((item) => {
             const originalIndex = allItems.indexOf(item);
             const isSelected = selectedRows.has(originalIndex);
@@ -889,7 +932,7 @@ export const UI = {
                 <td class="checkbox-cell"><input type="checkbox" class="row-checkbox" ${isSelected ? 'checked' : ''}></td>
                 <td class="editable" data-field="name">${capitalizeWords(item.name)}</td>
                 <td class="editable" data-field="tags">${capitalizeWords(item.tags || '')}</td>
-                <td class="editable" data-field="reference">${capitalizeWords(item.reference || '')}</td>
+                <td class="editable" data-field="reference">${(item.reference || '').toUpperCase()}</td>
                 <td class="editable" data-field="weight">${Number.isFinite(item.weight) ? item.weight : 0}</td>
                 <td><button class="btn-delete" data-index="${originalIndex}">×</button></td>
             </tr>
