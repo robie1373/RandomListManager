@@ -17,6 +17,7 @@ let currentTab = 'items';
 let filterLogic = 'OR';
 let selectedTags = new Set();
 let rollHistory = {}; // Per-tab roll history
+let rollResults = {}; // Per-tab roll results
 let pendingImport = null;
 
 // Initialize tabs structure
@@ -33,6 +34,14 @@ tabs.forEach(tab => {
     legendData[tab.id] = JSON.parse(localStorage.getItem(STORAGE_KEY + 'legend_' + tab.id)) || [];
     rollHistory[tab.id] = JSON.parse(localStorage.getItem(ROLL_HISTORY_KEY + tab.id)) || [];
 });
+
+// --- Utility Functions ---
+function capitalizeWords(text) {
+    if (!text) return '';
+    return text.split(' ').map(word => 
+        word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    ).join(' ');
+}
 
 // --- Core UI Functions ---
 
@@ -303,6 +312,20 @@ export const UI = {
             tableNameHeader.textContent = tabName;
         }
         
+        // Restore roll result for this tab
+        const resultDiv = document.getElementById('result');
+        const copyBtn = document.getElementById('copyBtn');
+        if (resultDiv) {
+            const savedResult = rollResults[tab];
+            if (savedResult) {
+                resultDiv.textContent = savedResult;
+                if (copyBtn) copyBtn.classList.remove('hidden');
+            } else {
+                resultDiv.textContent = 'Ready to roll...';
+                if (copyBtn) copyBtn.classList.add('hidden');
+            }
+        }
+        
         this.renderTagCloud();
         this.renderList();
         this.renderRollLog();
@@ -347,9 +370,8 @@ export const UI = {
         sortedTags.forEach(([lowerTag, displayTag]) => {
             const tagBtn = document.createElement('button');
             tagBtn.className = 'tag-btn';
-            // Display in sentence case: first letter uppercase, rest lowercase
-            const sentenceCase = lowerTag.charAt(0).toUpperCase() + lowerTag.slice(1);
-            tagBtn.textContent = sentenceCase;
+            // Display with capitalized words
+            tagBtn.textContent = capitalizeWords(lowerTag);
             tagBtn.dataset.tag = lowerTag;
             
             if (selectedTags.has(lowerTag)) {
@@ -384,9 +406,13 @@ export const UI = {
         if (selectedItem) {
             const rawName = selectedItem.reference ? `${selectedItem.name} (${selectedItem.reference})` : selectedItem.name;
             const resultText = DiceEngine.parseDice(rawName);
+            const capitalizedResult = capitalizeWords(resultText);
             
             const resultEl = document.getElementById('result');
-            resultEl.innerText = resultText;
+            resultEl.innerText = capitalizedResult;
+            
+            // Store result for current tab
+            rollResults[currentTab] = capitalizedResult;
             
             document.getElementById('copyBtn').classList.remove('hidden');
             this.addToHistory(resultText);
@@ -425,9 +451,9 @@ export const UI = {
             const originalIndex = allItems.indexOf(item);
             return `
             <tr data-item-index="${originalIndex}">
-                <td class="editable" data-field="name">${item.name}</td>
-                <td class="editable" data-field="tags">${item.tags || ''}</td>
-                <td class="editable" data-field="reference">${item.reference || ''}</td>
+                <td class="editable" data-field="name">${capitalizeWords(item.name)}</td>
+                <td class="editable" data-field="tags">${capitalizeWords(item.tags || '')}</td>
+                <td class="editable" data-field="reference">${capitalizeWords(item.reference || '')}</td>
                 <td class="editable" data-field="weight">${item.weight || 1}</td>
                 <td><button class="btn-delete" data-index="${originalIndex}">×</button></td>
             </tr>
@@ -598,7 +624,7 @@ export const UI = {
         
         const historyHTML = history.map(entry => `
             <div class="roll-log-entry">
-                <span class="roll-log-result">${entry.result}</span>
+                <span class="roll-log-result">${capitalizeWords(entry.result)}</span>
                 <span class="roll-log-time">${entry.timestamp}</span>
             </div>
         `).join('');

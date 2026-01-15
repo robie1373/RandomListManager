@@ -2029,4 +2029,92 @@ acronym,fullName
         // Button should be disabled again
         await expect(clearTagsBtn).toBeDisabled();
     });
+
+    test('legend table should have example row for adding entries', async ({ page }) => {
+        const legendBody = page.locator('#legendTableBody');
+        const exampleRow = legendBody.locator('tr.example-row');
+        
+        await expect(exampleRow).toBeVisible();
+        
+        // Should have editable cells
+        const acronymCell = exampleRow.locator('td[data-field="acronym"]');
+        const fullNameCell = exampleRow.locator('td[data-field="fullName"]');
+        
+        await expect(acronymCell).toBeVisible();
+        await expect(fullNameCell).toBeVisible();
+    });
+
+    test('tab names should be editable via double-click', async ({ page }) => {
+        // Get the first tab (Items)
+        const firstTab = page.locator('.tab-btn').first();
+        const originalName = await firstTab.textContent();
+        
+        // Double-click to edit
+        await firstTab.dblclick();
+        
+        // Should show an input field
+        const input = firstTab.locator('input.tab-name-edit');
+        await expect(input).toBeVisible();
+        
+        // Change the name
+        await input.fill('Test Tab Name');
+        await input.press('Enter');
+        
+        // Name should be updated
+        await expect(firstTab).toHaveText('Test Tab Name');
+        
+        // Should be able to edit again
+        await firstTab.dblclick();
+        const inputAgain = firstTab.locator('input.tab-name-edit');
+        await expect(inputAgain).toBeVisible();
+        
+        // Restore original name
+        await inputAgain.fill(originalName);
+        await inputAgain.press('Enter');
+    });
+
+    test('roll result display should be specific to each tab', async ({ page }) => {
+        // Add an item to the first tab and roll
+        await addItemViaExampleRow(page, 'First Tab Item');
+        
+        const rollBtn = page.locator('#rollBtn');
+        await rollBtn.click();
+        
+        // Verify result is displayed
+        const resultDiv = page.locator('#result');
+        const firstTabResult = await resultDiv.textContent();
+        expect(firstTabResult).not.toBe('Ready to roll...');
+        expect(firstTabResult).toContain('First Tab Item');
+        
+        // Create a new tab
+        const newTabBtn = page.locator('.new-tab-btn');
+        await newTabBtn.click();
+        
+        // Wait for new tab to be created and switched to
+        await page.waitForTimeout(100);
+        
+        // Result should be reset for the new tab (no roll yet)
+        let currentResult = await resultDiv.textContent();
+        expect(currentResult).toBe('Ready to roll...');
+        
+        // Add item to second tab and roll
+        await addItemViaExampleRow(page, 'Second Tab Item');
+        await rollBtn.click();
+        
+        const secondTabResult = await resultDiv.textContent();
+        expect(secondTabResult).toContain('Second Tab Item');
+        
+        // Switch back to first tab
+        const firstTab = page.locator('.tab-btn').first();
+        await firstTab.click();
+        
+        // Should show the first tab's result again
+        currentResult = await resultDiv.textContent();
+        expect(currentResult).toBe(firstTabResult);
+        expect(currentResult).toContain('First Tab Item');
+        
+        // Copy button should still be visible
+        const copyBtn = page.locator('#copyBtn');
+        await expect(copyBtn).not.toHaveClass(/hidden/);
+    });
 });
