@@ -1,5 +1,5 @@
 // Bump CACHE_VERSION with each deploy to bust old caches.
-const CACHE_VERSION = '1.13.1';
+const CACHE_VERSION = '1.13.2';
 const CACHE_NAME = `random-list-manager-v${CACHE_VERSION}`;
 const urlsToCache = [
   './',
