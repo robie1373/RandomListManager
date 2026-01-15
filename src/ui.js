@@ -23,6 +23,7 @@ let pendingImport = null;
 let selectedRows = new Set(); // Track selected row indices for bulk editing
 let pendingUniqueItem = null; // Track the last rolled unique item
 let pendingLimitItem = null; // Track the last rolled limit item
+let importQueue = []; // Queue of files to import sequentially
 
 // Initialize tabs structure
 let tabs = JSON.parse(localStorage.getItem(TABS_KEY)) || [
@@ -293,7 +294,12 @@ export const UI = {
             importFileInput.click();
         });
         importFileInput.addEventListener('change', (e) => {
-            this.importData(e.target.files[0]);
+            if (e.target.files.length > 0) {
+                // Queue all selected files
+                importQueue = Array.from(e.target.files);
+                // Process first file
+                this.processNextImportFile();
+            }
             e.target.value = ''; // Reset input
             toolsMenu.classList.add('hidden');
         });
@@ -1854,6 +1860,14 @@ export const UI = {
         return value;
     },
 
+    processNextImportFile() {
+        if (importQueue.length === 0) {
+            return;
+        }
+        const nextFile = importQueue.shift();
+        this.importData(nextFile);
+    },
+
     async importData(file) {
         if (!file) return;
 
@@ -2138,6 +2152,8 @@ export const UI = {
         localStorage.setItem(STORAGE_KEY + 'legend_' + id, JSON.stringify(legends));
         this.renderTabs();
         this.switchTab(id);
+        // Process next file in queue
+        this.processNextImportFile();
     },
 
     overwriteTabFromImport() {
@@ -2151,6 +2167,8 @@ export const UI = {
         this.renderTabs();
         this.switchTab(tabId);
         pendingImport = null;
+        // Process next file in queue
+        this.processNextImportFile();
     },
 
     appendTabFromImport() {
@@ -2168,6 +2186,8 @@ export const UI = {
         this.renderTabs();
         this.switchTab(tabId);
         pendingImport = null;
+        // Process next file in queue
+        this.processNextImportFile();
     },
 
     promptDeleteTab() {
