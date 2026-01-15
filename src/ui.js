@@ -1030,9 +1030,10 @@ export const UI = {
                 // Save to localStorage
                 localStorage.setItem(STORAGE_KEY + currentTab, JSON.stringify(data[currentTab]));
                 
-                // Update tag cloud if tags were edited
-                if (fieldName === 'tags') {
+                // Update tag cloud and list if tags or reference were edited (affects filtering)
+                if (fieldName === 'tags' || fieldName === 'reference') {
                     this.renderTagCloud();
+                    this.renderList();
                 }
             }
         };
