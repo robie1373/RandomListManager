@@ -1,16 +1,27 @@
 // src/logic.js
 export const DiceEngine = {
     parseDice: (text) => {
-        const diceRegex = /(\d+)d(\d+)(?:\s*([+-])\s*(\d+))?/gi;
+        // Support optional surrounding parentheses before modifiers, e.g., "(3d6)x10".
+        const diceRegex = /\(?((?:\d+))d((?:\d+))(?:\s*\)?\s*([+\-*x])\s*(\d+))?/gi;
         return text.replace(diceRegex, (match, count, sides, op, mod) => {
             let total = 0;
             for (let i = 0; i < parseInt(count); i++) {
                 total += Math.floor(Math.random() * parseInt(sides)) + 1;
             }
-            if (op && mod) {
-                total = op === '+' ? total + parseInt(mod) : total - parseInt(mod);
+
+            const operator = op ? op.toLowerCase() : null;
+            if (operator && mod) {
+                if (operator === '+') {
+                    total += parseInt(mod);
+                } else if (operator === '-') {
+                    total -= parseInt(mod);
+                } else if (operator === 'x' || operator === '*') {
+                    total *= parseInt(mod);
+                }
             }
-            return `${total} (${match})`;
+            const normalizedOp = operator ? (operator === '*' ? 'x' : operator) : '';
+            const notation = mod ? `${count}d${sides}${normalizedOp}${mod}` : `${count}d${sides}`;
+            return `${total} (${notation})`;
         });
     },
 

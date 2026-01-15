@@ -7,7 +7,9 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "test:e2e:debug": "playwright test --debug"
+    "test:e2e:debug": "playwright test --debug",
+    "sync-version": "node scripts/sync-version.js",
+    "version": "npm run sync-version && git add sw.js"
   },
   "devDependencies": {
     "@playwright/test": "^1.40.0",

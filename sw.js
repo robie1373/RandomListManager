@@ -1,4 +1,6 @@
-const CACHE_NAME = 'random-list-manager-v1';
+// Bump CACHE_VERSION with each deploy to bust old caches.
+const CACHE_VERSION = '1.12.1b2';
+const CACHE_NAME = `random-list-manager-v${CACHE_VERSION}`;
 const urlsToCache = [
   './',
   './index.html',
