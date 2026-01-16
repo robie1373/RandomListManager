@@ -27,43 +27,69 @@
                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M12 1v6m0 6v6"></path><path d="M4.22 4.22l4.24 4.24m6.08 0l4.24-4.24"></path><path d="M1 12h6m6 0h6"></path><path d="M4.22 19.78l4.24-4.24m6.08 0l4.24 4.24"></path></svg>
                 Tools
             </button>
+            <button id="tipsBtn" class="tools-btn" aria-label="Tips and Tricks menu">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                Tips & Tricks
+            </button>
         </header>
         
-        <!-- Tools Menu Dropdown -->
-        <div id="toolsMenu" class="tools-menu hidden">
-            <div class="tools-menu-section">
-                <label class="tools-menu-item">
-                    <div class="switch-container">
-                        <span class="switch-label">Light</span>
-                        <input type="checkbox" id="darkModeToggle" checked class="switch-input">
-                        <span class="switch-slider"></span>
-                        <span class="switch-label">Dark</span>
-                    </div>
-                </label>
-            </div>
-            <div class="tools-menu-divider"></div>
-            <div class="tools-menu-section">
-                <button class="tools-menu-btn" id="exportCSV"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg> Export CSV</button>
-                <button class="tools-menu-btn" id="exportJSON"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg> Export JSON</button>
-                <button class="tools-menu-btn" id="exportXLSX"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg> Export XLSX</button>
-                <button class="tools-menu-btn" id="exportAllTabs"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> Export All Tabs (JSON)</button>
-            </div>
-            <div class="tools-menu-divider"></div>
-            <div class="tools-menu-section">
-                <button class="tools-menu-btn" id="importData"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> Import Data</button>
-                <input type="file" id="importFileInput" accept=".csv,.json,.xlsx" style="display: none;">
-            </div>
-            <div class="tools-menu-divider"></div>
-            <div class="tools-menu-section">
-                <button class="tools-menu-btn" id="deleteTab"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg> Delete Current Tab</button>
-            </div>
-            <div class="tools-menu-divider"></div>
-            <div class="tools-menu-section">
-                <button class="tools-menu-btn" id="aboutBtn"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg> About</button>
-            </div>
-            <div class="tools-menu-divider"></div>
-            <div class="tools-menu-warning">
-                <strong>⚠️ Data Storage:</strong> Your data is stored locally in your browser. It will be lost if you clear browser data or switch devices. <strong>Regularly export your data</strong> to prevent loss.
+        <!-- Tools Modal -->
+        <div id="toolsMenu" class="modal hidden">
+            <div class="modal-content">
+                <button id="closeTools" class="modal-close">✕</button>
+                <h2>Tools</h2>
+                
+                <h3>Appearance</h3>
+                <div class="tools-menu-section">
+                    <label class="tools-menu-item">
+                        <div class="switch-container">
+                            <span class="switch-label">Light</span>
+                            <input type="checkbox" id="darkModeToggle" checked class="switch-input">
+                            <span class="switch-slider"></span>
+                            <span class="switch-label">Dark</span>
+                        </div>
+                    </label>
+                </div>
+                
+                <h3>Result Display</h3>
+                <div class="tools-menu-section">
+                    <label class="tools-menu-item">
+                        <div class="switch-container">
+                            <span class="switch-label">Detailed</span>
+                            <input type="checkbox" id="cleanResultsToggle" class="switch-input">
+                            <span class="switch-slider"></span>
+                            <span class="switch-label">Clean</span>
+                        </div>
+                    </label>
+                    <p style="font-size: 0.9em; color: var(--text-secondary); margin-top: 8px;">
+                        <strong>Detailed:</strong> Shows dice rolls and references (e.g., "3 (2d3) Orcs (dbr 95)")<br>
+                        <strong>Clean:</strong> Hides dice notation and references (e.g., "3 Orcs")
+                    </p>
+                </div>
+                
+                <h3>Data Management</h3>
+                <div class="tools-menu-section">
+                    <button class="tools-menu-btn" id="exportCSV"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg> Export CSV</button>
+                    <button class="tools-menu-btn" id="exportJSON"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg> Export JSON</button>
+                    <button class="tools-menu-btn" id="exportXLSX"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg> Export XLSX</button>
+                    <button class="tools-menu-btn" id="exportAllTabs"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> Export All Tabs (JSON)</button>
+                    <button class="tools-menu-btn" id="importData"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> Import Data</button>
+                    <input type="file" id="importFileInput" accept=".csv,.json,.xlsx" multiple style="display: none;">
+                </div>
+                
+                <h3>Tab Management</h3>
+                <div class="tools-menu-section">
+                    <button class="tools-menu-btn" id="deleteTab"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg> Delete Current Tab</button>
+                </div>
+                
+                <h3>Information</h3>
+                <div class="tools-menu-section">
+                    <button class="tools-menu-btn" id="aboutBtn"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg> About</button>
+                </div>
+                
+                <div class="tools-menu-warning">
+                    <strong>⚠️ Data Storage:</strong> Your data is stored locally in your browser. It will be lost if you clear browser data or switch devices. <strong>Regularly export your data</strong> to prevent loss.
+                </div>
             </div>
         </div>
 
@@ -96,7 +122,7 @@
                 </ul>
                 
                 <p style="margin-top: 20px; font-style: italic; color: #999;">
-                    <strong>Version:</strong> 1.0.0 | Built with vanilla JavaScript | Data stays local, never shared
+                    <strong>Version:</strong> <span id="aboutVersion">1.0.0</span> | Built with vanilla JavaScript | Data stays local, never shared
                 </p>
             </div>
         </div>
@@ -128,8 +154,23 @@
         <!-- Results Display -->
         <div id="resultWrapper">
             <div id="result">Ready to roll...</div>
-            <button id="copyBtn" class="hidden"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copy</button>
+            <button id="copyBtn" class="hidden"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><rect x="8" y="8" width="13" height="13" rx="2" ry="2"></rect></svg> Copy</button>
+            <button id="addToInventoryBtn" class="hidden"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg> Add to Inventory</button>
             <button id="rollBtn" class="btn-random"><svg class="icon" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="20" height="20" rx="2" fill="none"/><circle cx="7" cy="7" r="1.5"/><circle cx="17" cy="7" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="7" cy="17" r="1.5"/><circle cx="17" cy="17" r="1.5"/></svg> Roll on Table</button>
+            <div id="uniquePrompt" class="unique-prompt hidden" role="status">
+                <div class="unique-prompt-text">This is marked as unique. Would you like to set the weight to zero so it cannot be rolled again?</div>
+                <div class="unique-prompt-actions">
+                    <button id="uniquePromptYes" class="btn-inline primary">Yes, set to zero</button>
+                    <button id="uniquePromptNo" class="btn-inline">No</button>
+                </div>
+            </div>
+            <div id="limitPrompt" class="limit-prompt hidden" role="status">
+                <div class="limit-prompt-text">This item has a limit tag. Would you like to reduce it by one?</div>
+                <div class="limit-prompt-actions">
+                    <button id="limitPromptYes" class="btn-inline primary">Yes, reduce limit</button>
+                    <button id="limitPromptNo" class="btn-inline">No</button>
+                </div>
+            </div>
         </div>
         
         <!-- Roll Log -->
@@ -143,6 +184,9 @@
         
         <!-- Tag Cloud -->
         <div id="tagCloudContainer">
+            <div class="search-section">
+                <input type="text" id="searchInput" class="search-input" placeholder="Search items by name, tags, or reference...">
+            </div>
             <div class="tag-cloud-header">
                 <span class="tag-cloud-title">Filter by Tags:</span>
                 <div class="tag-match-mode">
@@ -169,6 +213,7 @@
                 <table>
                     <thead>
                         <tr>
+                            <th class="checkbox-header"><input type="checkbox" id="selectAllCheckbox" title="Select all visible rows"></th>
                             <th id="tableNameHeader">Name</th>
                             <th>Tags</th>
                             <th>Reference</th>
@@ -179,7 +224,28 @@
                     <tbody id="tableBody">
                     </tbody>
                 </table>
-                <div class="table-hint">Tags autocomplete: type to see existing tags, use ↑/↓ to highlight, Tab to accept.</div>
+                <div class="table-hint">Edit items by clicking on any cell.</div>
+                
+                <!-- Bulk Edit Panel -->
+                <div id="bulkEditPanel" class="bulk-edit-panel hidden">
+                    <div class="bulk-edit-header">
+                        <h3>Bulk Edit (<span id="bulkEditCount">0</span> items selected)</h3>
+                    </div>
+                    <div class="bulk-edit-content">
+                        <div class="bulk-edit-field">
+                            <label for="bulkEditTags">Add Tags (common tags shown):</label>
+                            <input type="text" id="bulkEditTags" placeholder="Enter tags to add, comma-separated">
+                        </div>
+                        <div class="bulk-edit-field">
+                            <label for="bulkEditReference">Set Reference:</label>
+                            <input type="text" id="bulkEditReference" placeholder="Enter reference">
+                        </div>
+                        <div class="bulk-edit-actions">
+                            <button id="bulkEditSave" class="btn-bulk-save">Apply</button>
+                            <button id="bulkEditCancel" class="btn-bulk-cancel">Cancel</button>
+                        </div>
+                    </div>
+                </div>
             </div>
             
             <!-- Legend Table -->
@@ -199,14 +265,71 @@
             </div>
         </div>
         
-        <!-- Help Text -->
-        <div class="help-text">
-            <p><strong>Tag Filtering Tips:</strong></p>
-            <ul>
-                <li><strong>OR mode:</strong> Shows items that have ANY of the selected tags.</li>
-                <li><strong>AND mode:</strong> Shows items that have ALL of the selected tags.</li>
-                <li><strong>Pro tip:</strong> Use difficulty level tags (e.g., "easy", "medium", "hard") combined with AND logic to ensure roll results match your party's level. For example, select both "potion" AND "easy" to get only easy-difficulty potions.</li>
-            </ul>
+        <!-- Tips and Tricks Modal -->
+        <div id="tipsModal" class="modal hidden">
+            <div class="modal-content">
+                <button id="closeTips" class="modal-close">✕</button>
+                <h2>Tips & Tricks</h2>
+                
+                <h3>Tag Filtering</h3>
+                <ul>
+                    <li><strong>OR mode:</strong> Shows items that have ANY of the selected tags.</li>
+                    <li><strong>AND mode:</strong> Shows items that have ALL of the selected tags.</li>
+                    <li><strong>Pro tip:</strong> Use difficulty level tags (e.g., "easy", "medium", "hard") combined with AND logic to ensure roll results match your party's level. For example, select both "potion" AND "easy" to get only easy-difficulty potions.</li>
+                </ul>
+                
+                <h3>Unique Tag</h3>
+                <ul>
+                    <li><strong>What it does:</strong> Add the "unique" tag to any item you want to roll only once in a session.</li>
+                    <li><strong>How it works:</strong> When you roll an item with the "unique" tag, you'll be prompted to set its weight to zero, preventing it from being rolled again.</li>
+                    <li><strong>Example:</strong> Use this for boss encounters, special treasures, or story-critical NPCs that should only appear once.</li>
+                </ul>
+                
+                <h3>Limit Tag (limit=n)</h3>
+                <ul>
+                    <li><strong>What it does:</strong> Add a "limit=n" tag to restrict how many times an item can be rolled.</li>
+                    <li><strong>How it works:</strong> When you roll an item with a "limit=n" tag, you'll be prompted to reduce the limit by one. When the limit reaches 0, the item's weight is automatically set to zero.</li>
+                    <li><strong>Example:</strong> Use "limit=3" for consumable items (potions, arrows) that can only be rolled 3 times before running out. Add "limit=5" for encounters that can occur up to 5 times.</li>
+                    <li><strong>Filtering:</strong> Click the "limit" tag in the tag cloud to filter and show only items that have active limits.</li>
+                    <li><strong>Persistence:</strong> The limit tag remains as "limit=0" even after it reaches zero, allowing you to see which items have been exhausted.</li>
+                </ul>
+                
+                <h3>Pool Tags (Cascading Rolls)</h3>
+                <ul>
+                    <li><strong>What it does:</strong> Roll on one table and automatically cascade rolls onto other tables based on a filter tag.</li>
+                    <li><strong>Syntax:</strong> Add a tag like "pool=TargetTab::AnotherTab::filtername" to any item.</li>
+                    <li><strong>How it works:</strong> When you roll an item with a pool tag, the system automatically searches the target tables for items matching the filter tag and randomly selects one. Results are appended to your roll.</li>
+                    <li><strong>Example:</strong> Create a Treasure tab with "Ancient Chest" tagged "pool=Loot::cursed". Create a Loot tab with items tagged "cursed" (like Gold Coins, Silver Chalice). Rolling Ancient Chest produces: "Ancient Chest with Gold Coins from Loot".</li>
+                    <li><strong>Multiple targets:</strong> Use multiple target tables like "pool=Loot::Encounters::Common" to cascade across several tables at once.</li>
+                    <li><strong>Filter matching:</strong> Target items must have the exact filter tag (e.g., "pool=cursed") in their tags to match. Just "cursed" alone won't match.</li>
+                    <li><strong>Case-insensitive:</strong> Tab names are matched case-insensitively, so "pool=loot" matches a "Loot" tab.</li>
+                    <li><strong>Silent skipping:</strong> If a target table has no matching items, it's simply skipped without error.</li>
+                    <li><strong>Weighted selection:</strong> Matching items are selected using the standard weighted randomization system, so items with higher weights are more likely to appear.</li>
+                </ul>
+                
+                <h3>Inventory Management</h3>
+                <ul>
+                    <li><strong>What it does:</strong> Quickly save roll results to an inventory tab for later reference.</li>
+                    <li><strong>How to set up:</strong> Create a tab with "inventory" in the name (e.g., "Inventory", "Party Inventory", "Player 1 Inventory").</li>
+                    <li><strong>How it works:</strong> After rolling, an "Add to Inventory" button appears next to the Copy button. Click it to add the roll result to your inventory tab.</li>
+                    <li><strong>Multiple inventories:</strong> If you have multiple tabs with "inventory" in the name, you'll be prompted to choose which one to add the item to.</li>
+                    <li><strong>Example:</strong> Roll on a Loot table and get "Gold Coins". Click "Add to Inventory" to store it in your Inventory tab. The item is added as a new row with default weight (50).</li>
+                    <li><strong>Use cases:</strong> Track party loot, player inventories, NPC belongings, or quest items collected during your session.</li>
+                </ul>
+                
+                <h3>Weight Values</h3>
+                <ul>
+                    <li>Use weights to make rare encounters truly rare—a weight of 1 vs 100 creates significant probability differences.</li>
+                    <li>A weight of 0 completely prevents an item from being rolled, even if it's the only item available.</li>
+                </ul>
+                
+                <h3>General Tips</h3>
+                <ul>
+                    <li>Export your data after major updates to maintain backups across devices.</li>
+                    <li>Use the roll log to track what you've already rolled and avoid repetition.</li>
+                    <li>Create separate tabs for different categories (encounters, items, NPCs, etc.) to stay organized.</li>
+                </ul>
+            </div>
         </div>
         </main>
     </div>
@@ -242,6 +365,10 @@
                 const versionEl = document.getElementById('appVersion');
                 if (versionEl) {
                     versionEl.textContent = `v${pkg.version}`;
+                }
+                const aboutVersionEl = document.getElementById('aboutVersion');
+                if (aboutVersionEl) {
+                    aboutVersionEl.textContent = pkg.version;
                 }
             })
             .catch(() => {

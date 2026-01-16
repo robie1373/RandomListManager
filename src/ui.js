@@ -10,15 +10,20 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const MAX_FIELD_LENGTH = 500; // for name, tags, reference
 const MAX_TAB_NAME_LENGTH = 100;
 const WEIGHT_DEFAULT = 50;
-const REFERENCE_DEFAULT = 'TBD';
-const TAGS_DEFAULT = 'tbd';
+const REFERENCE_DEFAULT = 'None';
+const TAGS_DEFAULT = 'TBD';
 
 let currentTab = 'items';
 let filterLogic = 'OR';
 let selectedTags = new Set();
+let searchTerm = ''; // Track search term for real-time filtering
 let rollHistory = {}; // Per-tab roll history
 let rollResults = {}; // Per-tab roll results
 let pendingImport = null;
+let selectedRows = new Set(); // Track selected row indices for bulk editing
+let pendingUniqueItem = null; // Track the last rolled unique item
+let pendingLimitItem = null; // Track the last rolled limit item
+let importQueue = []; // Queue of files to import sequentially
 
 // Initialize tabs structure
 let tabs = JSON.parse(localStorage.getItem(TABS_KEY)) || [
@@ -50,6 +55,7 @@ export const UI = {
         this.renderTabs();
         this.bindEvents();
         this.switchTab(tabs[0].id); // This calls renderTagCloud and renderList
+        this.updateBulkEditPanel(); // Keep bulk edit hidden until a selection exists
     },
 
     renderTabs() {
@@ -91,7 +97,7 @@ export const UI = {
         input.className = 'tab-name-edit';
         
         const saveEdit = () => {
-            const newName = input.value.trim();
+            const newName = input.value.trim().replace(/\s+/g, '_');
             if (newName && newName !== tab.name) {
                 tab.name = newName;
                 this.saveTabs();
@@ -159,25 +165,53 @@ export const UI = {
         // Main Action Buttons
         document.getElementById('rollBtn').addEventListener('click', () => this.handleRoll());
         document.getElementById('copyBtn').addEventListener('click', () => this.copyToClipboard());
+        document.getElementById('addToInventoryBtn').addEventListener('click', () => this.handleAddToInventory());
+
+        // Unique item inline prompt actions
+        const uniquePromptYes = document.getElementById('uniquePromptYes');
+        const uniquePromptNo = document.getElementById('uniquePromptNo');
+        if (uniquePromptYes) {
+            uniquePromptYes.addEventListener('click', () => this.handleUniquePromptYes());
+        }
+        if (uniquePromptNo) {
+            uniquePromptNo.addEventListener('click', () => this.handleUniquePromptNo());
+        }
+
+        // Limit item inline prompt actions
+        const limitPromptYes = document.getElementById('limitPromptYes');
+        const limitPromptNo = document.getElementById('limitPromptNo');
+        if (limitPromptYes) {
+            limitPromptYes.addEventListener('click', () => this.handleLimitPromptYes());
+        }
+        if (limitPromptNo) {
+            limitPromptNo.addEventListener('click', () => this.handleLimitPromptNo());
+        }
 
         // Roll log toggle and clear
         document.getElementById('rollLogToggle').addEventListener('click', () => this.toggleRollLog());
         document.getElementById('clearRollLog').addEventListener('click', () => this.clearRollLog());
 
-        // Tools Menu
+        // Tools Modal
         const toolsBtn = document.getElementById('toolsBtn');
         const toolsMenu = document.getElementById('toolsMenu');
-        toolsBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            toolsMenu.classList.toggle('hidden');
-        });
-
-        // Close menu when clicking outside
-        document.addEventListener('click', (e) => {
-            if (!toolsMenu.contains(e.target) && !toolsBtn.contains(e.target)) {
-                toolsMenu.classList.add('hidden');
-            }
-        });
+        if (toolsBtn) {
+            toolsBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.showTools();
+            });
+        }
+        if (document.getElementById('closeTools')) {
+            document.getElementById('closeTools').addEventListener('click', () => {
+                this.hideTools();
+            });
+        }
+        if (toolsMenu) {
+            toolsMenu.addEventListener('click', (e) => {
+                if (e.target.id === 'toolsMenu') {
+                    this.hideTools();
+                }
+            });
+        }
 
         // Dark Mode Toggle
         const darkModeToggle = document.getElementById('darkModeToggle');
@@ -194,35 +228,45 @@ export const UI = {
             });
         }
 
+        // Clean Results Toggle
+        const cleanResultsToggle = document.getElementById('cleanResultsToggle');
+        const savedCleanResults = localStorage.getItem('cleanResults');
+        if (savedCleanResults !== null) {
+            cleanResultsToggle.checked = JSON.parse(savedCleanResults);
+        }
+        cleanResultsToggle.addEventListener('change', () => {
+            localStorage.setItem('cleanResults', cleanResultsToggle.checked);
+        });
+
 
         // Export buttons
         document.getElementById('exportCSV').addEventListener('click', () => {
             this.exportData('csv');
-            toolsMenu.classList.add('hidden');
+            this.hideTools();
         });
         document.getElementById('exportJSON').addEventListener('click', () => {
             this.exportData('json');
-            toolsMenu.classList.add('hidden');
+            this.hideTools();
         });
         document.getElementById('exportXLSX').addEventListener('click', () => {
             this.exportData('xlsx');
-            toolsMenu.classList.add('hidden');
+            this.hideTools();
         });
         document.getElementById('exportAllTabs').addEventListener('click', () => {
             this.exportAllTabs();
-            toolsMenu.classList.add('hidden');
+            this.hideTools();
         });
 
         // Delete tab
         document.getElementById('deleteTab').addEventListener('click', () => {
             this.promptDeleteTab();
-            toolsMenu.classList.add('hidden');
+            this.hideTools();
         });
 
         // About button
         document.getElementById('aboutBtn').addEventListener('click', () => {
             this.showAbout();
-            toolsMenu.classList.add('hidden');
+            this.hideTools();
         });
         document.getElementById('closeAbout').addEventListener('click', () => {
             this.hideAbout();
@@ -233,13 +277,40 @@ export const UI = {
             }
         });
 
+        // Tips and Tricks button
+        const tipsBtn = document.getElementById('tipsBtn');
+        const tipsModal = document.getElementById('tipsModal');
+        if (tipsBtn) {
+            tipsBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.showTips();
+            });
+        }
+        if (document.getElementById('closeTips')) {
+            document.getElementById('closeTips').addEventListener('click', () => {
+                this.hideTips();
+            });
+        }
+        if (tipsModal) {
+            tipsModal.addEventListener('click', (e) => {
+                if (e.target.id === 'tipsModal') {
+                    this.hideTips();
+                }
+            });
+        }
+
         // Import button
         const importFileInput = document.getElementById('importFileInput');
         document.getElementById('importData').addEventListener('click', () => {
             importFileInput.click();
         });
         importFileInput.addEventListener('change', (e) => {
-            this.importData(e.target.files[0]);
+            if (e.target.files.length > 0) {
+                // Queue all selected files
+                importQueue = Array.from(e.target.files);
+                // Process first file
+                this.processNextImportFile();
+            }
             e.target.value = ''; // Reset input
             toolsMenu.classList.add('hidden');
         });
@@ -263,6 +334,12 @@ export const UI = {
             if (e.target.tagName === 'TD' && e.target.classList.contains('editable')) {
                 const row = e.target.parentElement;
                 this.editCell(e.target, row);
+            }
+            // Handle row selection checkboxes
+            if (e.target.classList.contains('row-checkbox')) {
+                const row = e.target.closest('tr');
+                const itemIndex = parseInt(row.getAttribute('data-item-index'));
+                this.toggleRowSelection(itemIndex);
             }
         });
         
@@ -291,12 +368,47 @@ export const UI = {
             });
         });
 
+        // Search input
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                searchTerm = e.target.value.toLowerCase().trim();
+                console.log('Search term updated:', searchTerm);
+                this.renderTagCloud();
+                this.renderList();
+            });
+        } else {
+            console.warn('Search input element not found');
+        }
+
         // Clear tags button
         document.getElementById('clearTagsBtn').addEventListener('click', () => this.clearAllTags());
+        
+        // Select all checkbox
+        document.getElementById('selectAllCheckbox').addEventListener('change', (e) => {
+            this.toggleSelectAll(e.target.checked);
+        });
+        
+        // Bulk edit save button
+        document.getElementById('bulkEditSave').addEventListener('click', () => {
+            this.applyBulkEdit();
+        });
+        
+        // Bulk edit cancel button
+        document.getElementById('bulkEditCancel').addEventListener('click', () => {
+            this.clearSelection();
+        });
     },
 
     switchTab(tab) {
         currentTab = tab;
+        
+        // Clear search when switching tabs
+        searchTerm = '';
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) {
+            searchInput.value = '';
+        }
         
         // Update CSS classes for active tabs
         document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -326,9 +438,151 @@ export const UI = {
             }
         }
         
+        // Clear selection when switching tabs
+        this.clearSelection();
+        
         this.renderTagCloud();
         this.renderList();
         this.renderRollLog();
+    },
+    
+    toggleRowSelection(itemIndex) {
+        if (selectedRows.has(itemIndex)) {
+            selectedRows.delete(itemIndex);
+        } else {
+            selectedRows.add(itemIndex);
+        }
+        this.renderList();
+        this.updateBulkEditPanel();
+    },
+    
+    toggleSelectAll(checked) {
+        const filtered = this.getFilteredList();
+        const allItems = data[currentTab];
+        
+        if (checked) {
+            // Select all visible items
+            filtered.forEach(item => {
+                const index = allItems.indexOf(item);
+                if (index !== -1) {
+                    selectedRows.add(index);
+                }
+            });
+        } else {
+            // Deselect all visible items
+            filtered.forEach(item => {
+                const index = allItems.indexOf(item);
+                if (index !== -1) {
+                    selectedRows.delete(index);
+                }
+            });
+        }
+        this.renderList();
+        this.updateBulkEditPanel();
+    },
+    
+    clearSelection() {
+        selectedRows.clear();
+        const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+        if (selectAllCheckbox) selectAllCheckbox.checked = false;
+        this.renderList();
+        this.updateBulkEditPanel();
+    },
+    
+    updateBulkEditPanel() {
+        const panel = document.getElementById('bulkEditPanel');
+        const count = document.getElementById('bulkEditCount');
+        const tagsInput = document.getElementById('bulkEditTags');
+        const refInput = document.getElementById('bulkEditReference');
+        
+        if (selectedRows.size === 0) {
+            panel.classList.add('hidden');
+            return;
+        }
+        
+        panel.classList.remove('hidden');
+        count.textContent = selectedRows.size;
+        
+        // Find common tags and references
+        const selectedItems = Array.from(selectedRows).map(idx => data[currentTab][idx]);
+        
+        // Get intersection of all tags
+        const tagSets = selectedItems.map(item => {
+            if (!item.tags) return new Set();
+            return new Set(item.tags.split(',').map(t => t.trim().toLowerCase()).filter(t => t));
+        });
+        
+        const commonTags = tagSets.reduce((acc, set) => {
+            if (acc === null) return set;
+            return new Set([...acc].filter(x => set.has(x)));
+        }, null);
+        
+        tagsInput.value = commonTags ? Array.from(commonTags).join(', ') : '';
+        
+        // Get common reference (only if all items have the same reference)
+        const references = selectedItems.map(item => (item.reference || '').trim().toLowerCase());
+        const allSameRef = references.every(ref => ref === references[0]);
+        refInput.value = allSameRef && references[0] ? references[0] : '';
+    },
+    
+    applyBulkEdit() {
+        const tagsInput = document.getElementById('bulkEditTags');
+        const refInput = document.getElementById('bulkEditReference');
+        const newTagsStr = tagsInput.value.trim();
+        const newRef = refInput.value.trim();
+        
+        // Calculate current common tags (what was shown in the input initially)
+        const selectedItems = Array.from(selectedRows).map(idx => data[currentTab][idx]);
+        const tagSets = selectedItems.map(item => {
+            if (!item.tags) return new Set();
+            return new Set(item.tags.split(',').map(t => t.trim().toLowerCase()).filter(t => t));
+        });
+        
+        const oldCommonTags = tagSets.reduce((acc, set) => {
+            if (acc === null) return set;
+            return new Set([...acc].filter(x => set.has(x)));
+        }, null) || new Set();
+        
+        // Parse new tags from input
+        const newCommonTags = new Set(
+            newTagsStr.split(',').map(t => t.trim().toLowerCase()).filter(t => t)
+        );
+        
+        selectedRows.forEach(idx => {
+            const item = data[currentTab][idx];
+            if (!item) return;
+            
+            // Get current tags for this item
+            const currentTags = new Set(
+                (item.tags || '').split(',').map(t => t.trim().toLowerCase()).filter(t => t)
+            );
+            
+            // Remove old common tags that are no longer in the new common set
+            oldCommonTags.forEach(tag => {
+                if (!newCommonTags.has(tag)) {
+                    currentTags.delete(tag);
+                }
+            });
+            
+            // Add new common tags
+            newCommonTags.forEach(tag => {
+                currentTags.add(tag);
+            });
+            
+            // Update item tags
+            item.tags = Array.from(currentTags).join(', ') || TAGS_DEFAULT;
+            
+            // Update reference if specified
+            if (newRef) {
+                item.reference = newRef;
+            }
+        });
+        
+        // Save and update UI
+        localStorage.setItem(STORAGE_KEY + currentTab, JSON.stringify(data[currentTab]));
+        this.renderTagCloud();
+        this.renderList();
+        this.updateBulkEditPanel();
     },
 
     renderTagCloud() {
@@ -337,24 +591,53 @@ export const UI = {
         
         const clearTagsBtn = document.getElementById('clearTagsBtn');
         
-        // Extract all unique tags from current tab's data (case-insensitive)
-        const allTagsMap = new Map(); // lowercase -> display case
-        data[currentTab].forEach(item => {
+        // Extract tags and references from search-filtered items
+        const tagsMap = new Map(); // lowercase -> display case
+        const referencesMap = new Map(); // lowercase -> display case
+        
+        // Apply search filter first to get only relevant items
+        const itemsToProcess = data[currentTab].filter(item => {
+            if (!searchTerm) return true;
+            const name = (item.name || '').toLowerCase();
+            const tags = (item.tags || '').toLowerCase();
+            const reference = (item.reference || '').toLowerCase();
+            return name.includes(searchTerm) || tags.includes(searchTerm) || reference.includes(searchTerm);
+        });
+        
+        itemsToProcess.forEach(item => {
+            // Add tags from tags field
             if (item.tags) {
                 const tags = item.tags.split(',').map(t => t.trim()).filter(t => t);
                 tags.forEach(tag => {
-                    const lowerTag = tag.toLowerCase();
-                    if (!allTagsMap.has(lowerTag)) {
-                        allTagsMap.set(lowerTag, tag);
+                    // For limit=n tags, display as just 'limit'
+                    const displayTag = tag.startsWith('limit=') ? 'limit' : tag;
+                    const lowerTag = displayTag.toLowerCase();
+                    if (!tagsMap.has(lowerTag)) {
+                        tagsMap.set(lowerTag, displayTag);
                     }
                 });
+            }
+            // Add reference field separately (if not default value)
+            if (item.reference && item.reference !== REFERENCE_DEFAULT && item.reference.toLowerCase() !== 'none') {
+                let ref = item.reference.trim();
+                if (ref) {
+                    // Strip space followed by number(s) at the end (e.g., "DBR 123" -> "DBR")
+                    // But keep references without spaces (e.g., "DBR2" stays "DBR2")
+                    ref = ref.replace(/\s+\d+$/, '');
+                    if (ref) {
+                        const lowerRef = ref.toLowerCase();
+                        if (!referencesMap.has(lowerRef)) {
+                            referencesMap.set(lowerRef, ref);
+                        }
+                    }
+                }
             }
         });
         
         // Clear existing tags
         tagCloudEl.innerHTML = '';
         
-        if (allTagsMap.size === 0) {
+        if (tagsMap.size === 0 && referencesMap.size === 0) {
             tagCloudEl.innerHTML = '<span class="no-tags">No tags available. Add tags to items to enable filtering.</span>';
             if (clearTagsBtn) clearTagsBtn.disabled = true;
             return;
@@ -365,22 +648,78 @@ export const UI = {
             clearTagsBtn.disabled = selectedTags.size === 0;
         }
         
-        // Create tag buttons
-        const sortedTags = Array.from(allTagsMap.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-        sortedTags.forEach(([lowerTag, displayTag]) => {
-            const tagBtn = document.createElement('button');
-            tagBtn.className = 'tag-btn';
-            // Display with capitalized words
-            tagBtn.textContent = capitalizeWords(lowerTag);
-            tagBtn.dataset.tag = lowerTag;
+        // Create tags section
+        if (tagsMap.size > 0) {
+            const tagsSection = document.createElement('div');
+            tagsSection.style.marginBottom = '16px';
             
-            if (selectedTags.has(lowerTag)) {
-                tagBtn.classList.add('selected');
-            }
+            const tagsLabel = document.createElement('div');
+            tagsLabel.style.fontWeight = '600';
+            tagsLabel.style.marginBottom = '8px';
+            tagsLabel.style.fontSize = '0.9rem';
+            tagsLabel.style.color = 'var(--text-secondary)';
+            tagsLabel.textContent = 'Tags:';
+            tagsSection.appendChild(tagsLabel);
             
-            tagBtn.addEventListener('click', () => this.toggleTag(lowerTag));
-            tagCloudEl.appendChild(tagBtn);
-        });
+            const tagsContainer = document.createElement('div');
+            tagsContainer.style.display = 'flex';
+            tagsContainer.style.flexWrap = 'wrap';
+            tagsContainer.style.gap = '8px';
+            
+            const sortedTags = Array.from(tagsMap.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+            sortedTags.forEach(([lowerTag, displayTag]) => {
+                const tagBtn = document.createElement('button');
+                tagBtn.className = 'tag-btn';
+                tagBtn.textContent = capitalizeWords(lowerTag);
+                tagBtn.dataset.tag = lowerTag;
+                
+                if (selectedTags.has(lowerTag)) {
+                    tagBtn.classList.add('selected');
+                }
+                
+                tagBtn.addEventListener('click', () => this.toggleTag(lowerTag));
+                tagsContainer.appendChild(tagBtn);
+            });
+            
+            tagsSection.appendChild(tagsContainer);
+            tagCloudEl.appendChild(tagsSection);
+        }
+        
+        // Create references section
+        if (referencesMap.size > 0) {
+            const referencesSection = document.createElement('div');
+            
+            const referencesLabel = document.createElement('div');
+            referencesLabel.style.fontWeight = '600';
+            referencesLabel.style.marginBottom = '8px';
+            referencesLabel.style.fontSize = '0.9rem';
+            referencesLabel.style.color = 'var(--text-secondary)';
+            referencesLabel.textContent = 'References:';
+            referencesSection.appendChild(referencesLabel);
+            
+            const referencesContainer = document.createElement('div');
+            referencesContainer.style.display = 'flex';
+            referencesContainer.style.flexWrap = 'wrap';
+            referencesContainer.style.gap = '8px';
+            
+            const sortedRefs = Array.from(referencesMap.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+            sortedRefs.forEach(([lowerRef, displayRef]) => {
+                const refBtn = document.createElement('button');
+                refBtn.className = 'tag-btn';
+                refBtn.textContent = capitalizeWords(lowerRef);
+                refBtn.dataset.tag = lowerRef;
+                
+                if (selectedTags.has(lowerRef)) {
+                    refBtn.classList.add('selected');
+                }
+                
+                refBtn.addEventListener('click', () => this.toggleTag(lowerRef));
+                referencesContainer.appendChild(refBtn);
+            });
+            
+            referencesSection.appendChild(referencesContainer);
+            tagCloudEl.appendChild(referencesSection);
+        }
     },
     
     toggleTag(tag) {
@@ -401,12 +740,36 @@ export const UI = {
 
     handleRoll() {
         const list = this.getFilteredList();
-        const selectedItem = DiceEngine.pickWeightedItem(list);
+        // Exclude items with weight 0 from rolling
+        const rollableList = list.filter(item => (item.weight || 0) > 0);
+        const selectedItem = DiceEngine.pickWeightedItem(rollableList);
         
         if (selectedItem) {
-            const rawName = selectedItem.reference ? `${selectedItem.name} (${selectedItem.reference})` : selectedItem.name;
-            const resultText = DiceEngine.parseDice(rawName);
-            const capitalizedResult = capitalizeWords(resultText);
+            // Check clean results setting
+            const cleanResultsToggle = document.getElementById('cleanResultsToggle');
+            const shouldCleanResults = cleanResultsToggle && cleanResultsToggle.checked;
+            
+            // Build rawName conditionally - only include reference if NOT cleaning results
+            const rawName = (selectedItem.reference && !shouldCleanResults) 
+                ? `${selectedItem.name} (${selectedItem.reference})` 
+                : selectedItem.name;
+            const resultText = DiceEngine.parseDice(rawName, shouldCleanResults);
+            let capitalizedResult = capitalizeWords(resultText);
+            
+            // Check for pool tag and append pool rolls
+            const poolInfo = this.parsePoolTag(selectedItem.tags || '');
+            if (poolInfo && poolInfo.targetTabs.length > 0) {
+                for (const targetTab of poolInfo.targetTabs) {
+                    const poolRoll = this.rollOnTargetTab(targetTab.id, poolInfo.filterTag);
+                    if (poolRoll) {
+                        const capitalizedPoolRoll = capitalizeWords(poolRoll);
+                        capitalizedResult += ` with ${capitalizedPoolRoll} from ${targetTab.name}`;
+                    }
+                }
+                // Append filter tag name at the end of cascade results (without leading 'pool=')
+                const filterNameForDisplay = (poolInfo.filterTag || '').replace(/^pool=/i, '');
+                capitalizedResult += ` These are ${filterNameForDisplay}`;
+            }
             
             const resultEl = document.getElementById('result');
             resultEl.innerText = capitalizedResult;
@@ -415,17 +778,347 @@ export const UI = {
             rollResults[currentTab] = capitalizedResult;
             
             document.getElementById('copyBtn').classList.remove('hidden');
+            this.updateInventoryButtonVisibility();
             this.addToHistory(resultText);
             this.renderRollLog();
+
+            // Check for limit tag and show limit prompt if applicable
+            const limitValue = this.parseLimitFromTags(selectedItem.tags || '');
+            if (limitValue !== null && limitValue > 0) {
+                this.showLimitPrompt(selectedItem);
+                this.hideUniquePrompt();
+            } else {
+                this.hideLimitPrompt();
+                // Show unique prompt when applicable (only if limit prompt not shown)
+                const hasUniqueTag = (selectedItem.tags || '').toLowerCase().split(',').map(t => t.trim()).includes('unique');
+                if (hasUniqueTag && selectedItem.weight > 0) {
+                    this.showUniquePrompt(selectedItem);
+                } else {
+                    this.hideUniquePrompt();
+                }
+            }
+        } else {
+            this.hideUniquePrompt();
+            this.hideLimitPrompt();
         }
+    },
+
+    parseLimitFromTags(tagsStr) {
+        if (!tagsStr) return null;
+        const tags = tagsStr.split(',').map(t => t.trim());
+        for (const tag of tags) {
+            if (tag.startsWith('limit=')) {
+                const value = parseInt(tag.substring(6), 10);
+                if (!isNaN(value)) {
+                    return value;
+                }
+            }
+        }
+        return null;
+    },
+
+    parsePoolTag(tagsStr) {
+        // Parse pool=tabname::tabname::filtername format (case-insensitive)
+        // Returns { targetTabs: [tab objects], filterTag: 'pool=filtername' } or null
+        if (!tagsStr) return null;
+        const tags = tagsStr.split(',').map(t => t.trim());
+        for (const tag of tags) {
+            const lowerTag = tag.toLowerCase();
+            if (lowerTag.startsWith('pool=')) {
+                const poolSpec = lowerTag.substring(5); // Remove 'pool='
+                const parts = poolSpec.split('::');
+                if (parts.length < 2) continue; // Must have at least one tab and a filter
+                
+                const candidateTabNames = parts.slice(0, -1).map(p => p.trim().toLowerCase());
+                const filterName = parts[parts.length - 1].trim();
+                const filterTag = `pool=${filterName}`.toLowerCase();
+                
+                // Find matching target tabs
+                const targetTabs = tabs.filter(tab => 
+                    candidateTabNames.includes(tab.name.toLowerCase())
+                );
+                
+                return { targetTabs, filterTag };
+            }
+        }
+        return null;
+    },
+
+    rollOnTargetTab(tabId, filterTag) {
+        // Roll on a specific target tab filtered by filterTag
+        // filterTag is lowercased, e.g., 'pool=loot-db-goblin'
+        // Returns rolled item result or null if no match
+        const targetItems = data[tabId] || [];
+        if (!targetItems || targetItems.length === 0) return null;
+        
+        // Filter items: must contain filterTag in tags and have weight > 0
+        const eligible = targetItems.filter(item => {
+            const itemTags = (item.tags || '').toLowerCase();
+            return itemTags.includes(filterTag) && (item.weight || 0) > 0;
+        });
+        
+        if (eligible.length === 0) return null;
+        
+        const rolled = DiceEngine.pickWeightedItem(eligible);
+        if (!rolled) return null;
+        
+        // Check clean results setting
+        const cleanResultsToggle = document.getElementById('cleanResultsToggle');
+        const shouldCleanResults = cleanResultsToggle && cleanResultsToggle.checked;
+        
+        // Build rawName conditionally - only include reference if NOT cleaning results
+        const rawName = (rolled.reference && !shouldCleanResults)
+            ? `${rolled.name} (${rolled.reference})` 
+            : rolled.name;
+        return DiceEngine.parseDice(rawName, shouldCleanResults);
+    },
+
+    getInventoryTabs() {
+        // Find all tabs that contain "inventory" in the name (case-insensitive)
+        return tabs.filter(tab => tab.name.toLowerCase().includes('inventory'));
+    },
+
+    updateInventoryButtonVisibility() {
+        const inventoryTabs = this.getInventoryTabs();
+        const addToInventoryBtn = document.getElementById('addToInventoryBtn');
+        if (inventoryTabs.length > 0) {
+            addToInventoryBtn.classList.remove('hidden');
+        } else {
+            addToInventoryBtn.classList.add('hidden');
+        }
+    },
+
+    handleAddToInventory() {
+        const inventoryTabs = this.getInventoryTabs();
+        
+        if (inventoryTabs.length === 0) {
+            return; // Should not happen as button is hidden, but safety check
+        }
+        
+        const resultText = rollResults[currentTab] || document.getElementById('result').innerText;
+        
+        if (inventoryTabs.length === 1) {
+            // Only one inventory tab, add directly
+            this.addToInventory(inventoryTabs[0].id, resultText);
+        } else {
+            // Multiple inventory tabs, prompt user to select
+            this.promptSelectInventory(inventoryTabs, resultText);
+        }
+    },
+
+    promptSelectInventory(inventoryTabs, resultText) {
+        const promptContainer = document.getElementById('promptContainer');
+        const promptMessage = document.getElementById('promptMessage');
+        const promptPrimary = document.getElementById('promptPrimary');
+        const promptSecondary = document.getElementById('promptSecondary');
+        const promptCancel = document.getElementById('promptCancel');
+
+        // Build selection message
+        let message = 'Select which inventory to add to:\n';
+        inventoryTabs.forEach((tab, index) => {
+            message += `\n${index + 1}. ${tab.name}`;
+        });
+
+        promptMessage.innerText = message;
+        promptPrimary.innerText = inventoryTabs[0].name;
+        promptPrimary.onclick = () => {
+            try {
+                this.addToInventory(inventoryTabs[0].id, resultText);
+            } finally {
+                this.hidePrompt();
+            }
+        };
+
+        if (inventoryTabs.length > 1) {
+            promptSecondary.innerText = inventoryTabs[1].name;
+            promptSecondary.style.display = 'block';
+            promptSecondary.onclick = () => {
+                try {
+                    this.addToInventory(inventoryTabs[1].id, resultText);
+                } finally {
+                    this.hidePrompt();
+                }
+            };
+        }
+
+        // If more than 2 inventory tabs, use Cancel button for 3rd option
+        if (inventoryTabs.length > 2) {
+            promptCancel.innerText = inventoryTabs[2].name;
+            promptCancel.onclick = () => {
+                try {
+                    this.addToInventory(inventoryTabs[2].id, resultText);
+                } finally {
+                    this.hidePrompt();
+                }
+            };
+        } else {
+            promptCancel.innerText = 'Cancel';
+            promptCancel.onclick = () => {
+                this.hidePrompt();
+            };
+        }
+
+        promptContainer.classList.remove('hidden');
+    },
+
+    addToInventory(tabId, resultText) {
+        if (!data[tabId]) {
+            data[tabId] = [];
+        }
+
+        // Add the result as a new item with default weight
+        const newItem = {
+            name: resultText,
+            tags: '',
+            reference: '',
+            weight: 50
+        };
+
+        data[tabId].push(newItem);
+        this.saveData();
+
+        // If we're on the inventory tab, re-render the list
+        if (currentTab === tabId) {
+            this.renderList();
+        }
+
+        // Show brief feedback (optional - could use a toast notification)
+        console.log(`Added "${resultText}" to inventory tab ${tabId}`);
+    },
+
+    hidePrompt() {
+        const promptContainer = document.getElementById('promptContainer');
+        if (promptContainer && !promptContainer.classList.contains('hidden')) {
+            promptContainer.classList.add('hidden');
+        }
+    },
+
+    showLimitPrompt(item) {
+        pendingLimitItem = item;
+        const promptEl = document.getElementById('limitPrompt');
+        if (promptEl) {
+            promptEl.classList.remove('hidden');
+        }
+    },
+
+    hideLimitPrompt() {
+        pendingLimitItem = null;
+        const promptEl = document.getElementById('limitPrompt');
+        if (promptEl && !promptEl.classList.contains('hidden')) {
+            promptEl.classList.add('hidden');
+        }
+    },
+
+    handleLimitPromptYes() {
+        if (!pendingLimitItem) {
+            this.hideLimitPrompt();
+            return;
+        }
+
+        const items = data[currentTab];
+        const idx = items.indexOf(pendingLimitItem);
+        if (idx > -1) {
+            const item = items[idx];
+            const tagsArray = (item.tags || '').split(',').map(t => t.trim());
+            const newTagsArray = [];
+            
+            for (const tag of tagsArray) {
+                if (tag.startsWith('limit=')) {
+                    const currentLimit = parseInt(tag.substring(6), 10);
+                    if (!isNaN(currentLimit)) {
+                        const newLimit = currentLimit - 1;
+                        newTagsArray.push(`limit=${newLimit}`);
+                        // If newLimit <= 0, set weight to 0
+                        if (newLimit <= 0) {
+                            item.weight = 0;
+                        }
+                    }
+                } else {
+                    newTagsArray.push(tag);
+                }
+            }
+            
+            item.tags = newTagsArray.filter(t => t).join(', ') || TAGS_DEFAULT;
+            localStorage.setItem(STORAGE_KEY + currentTab, JSON.stringify(items));
+            this.renderTagCloud();
+            this.renderList();
+        }
+        this.hideLimitPrompt();
+    },
+
+    handleLimitPromptNo() {
+        this.hideLimitPrompt();
+    },
+
+    showUniquePrompt(item) {
+        pendingUniqueItem = item;
+        const promptEl = document.getElementById('uniquePrompt');
+        if (promptEl) {
+            promptEl.classList.remove('hidden');
+        }
+    },
+
+    hideUniquePrompt() {
+        pendingUniqueItem = null;
+        const promptEl = document.getElementById('uniquePrompt');
+        if (promptEl && !promptEl.classList.contains('hidden')) {
+            promptEl.classList.add('hidden');
+        }
+    },
+
+    handleUniquePromptYes() {
+        if (!pendingUniqueItem) {
+            this.hideUniquePrompt();
+            return;
+        }
+
+        const items = data[currentTab];
+        const idx = items.indexOf(pendingUniqueItem);
+        if (idx > -1) {
+            items[idx].weight = 0;
+            localStorage.setItem(STORAGE_KEY + currentTab, JSON.stringify(items));
+            this.renderList();
+        }
+        this.hideUniquePrompt();
+    },
+
+    handleUniquePromptNo() {
+        this.hideUniquePrompt();
     },
 
     getFilteredList() {
         const rawList = data[currentTab];
-        if (selectedTags.size === 0) return rawList;
+        
+        // Apply search filter
+        let searchFiltered = rawList;
+        if (searchTerm) {
+            searchFiltered = rawList.filter(item => {
+                const name = (item.name || '').toLowerCase();
+                const tags = (item.tags || '').toLowerCase();
+                const reference = (item.reference || '').toLowerCase();
+                return name.includes(searchTerm) || tags.includes(searchTerm) || reference.includes(searchTerm);
+            });
+        }
+        
+        // Apply tag filter
+        if (selectedTags.size === 0) return searchFiltered;
 
-        return rawList.filter(item => {
+        return searchFiltered.filter(item => {
             const itemTags = (item.tags || "").toLowerCase().split(',').map(t => t.trim());
+            // Also include reference as a searchable tag
+            if (item.reference && item.reference !== REFERENCE_DEFAULT && item.reference.toLowerCase() !== 'none') {
+                const ref = item.reference.trim().toLowerCase();
+                if (ref) {
+                    itemTags.push(ref);
+                }
+            }
+            
+            // Handle "limit" tag filtering - match any "limit=n" tag
+            const hasLimitTag = itemTags.some(tag => tag.startsWith('limit='));
+            if (hasLimitTag) {
+                itemTags.push('limit');
+            }
+            
             const activeFilters = Array.from(selectedTags).map(t => t.toLowerCase());
             
             return filterLogic === 'OR' 
@@ -445,22 +1138,25 @@ export const UI = {
         const tabLabel = currentTabObj ? currentTabObj.name.replace(/s$/, '') : 'Item';
         nameHeader.textContent = tabLabel;
         
-        // Render filtered items but preserve original indices for operations
-        const itemsToShow = selectedTags.size === 0 ? allItems : filtered;
+        // Always use filtered list (which includes both search and tag filtering)
+        const itemsToShow = filtered;
         const itemsHTML = itemsToShow.map((item) => {
             const originalIndex = allItems.indexOf(item);
+            const isSelected = selectedRows.has(originalIndex);
             return `
-            <tr data-item-index="${originalIndex}">
+            <tr data-item-index="${originalIndex}" class="${isSelected ? 'selected-row' : ''}">
+                <td class="checkbox-cell"><input type="checkbox" class="row-checkbox" ${isSelected ? 'checked' : ''}></td>
                 <td class="editable" data-field="name">${capitalizeWords(item.name)}</td>
                 <td class="editable" data-field="tags">${capitalizeWords(item.tags || '')}</td>
-                <td class="editable" data-field="reference">${capitalizeWords(item.reference || '')}</td>
-                <td class="editable" data-field="weight">${item.weight || 1}</td>
+                <td class="editable" data-field="reference">${(item.reference || '').toUpperCase()}</td>
+                <td class="editable" data-field="weight">${Number.isFinite(item.weight) ? item.weight : 0}</td>
                 <td><button class="btn-delete" data-index="${originalIndex}">×</button></td>
             </tr>
         `}).join('');
         
         const exampleRowHTML = `
             <tr class="example-row">
+                <td class="checkbox-cell"></td>
                 <td class="editable" data-field="name">Example ${tabLabel}</td>
                 <td class="editable" data-field="tags">Treasure, Cave</td>
                 <td class="editable" data-field="reference">Reference</td>
@@ -643,8 +1339,7 @@ export const UI = {
         let item = null;
         if (!isExampleRow) {
             const itemIndex = parseInt(row.getAttribute('data-item-index'));
-            const filtered = this.getFilteredList();
-            item = filtered[itemIndex];
+            item = data[currentTab][itemIndex];
             if (!item) return;
         }
         
@@ -655,178 +1350,8 @@ export const UI = {
         input.className = 'cell-input';
         
         if (fieldName === 'weight') {
-            input.min = '1';
+            input.min = '0';
             input.max = '100';
-        }
-        
-        // Add enhanced autocomplete for tags field
-        if (fieldName === 'tags') {
-            // Get all unique tags from current tab
-            const allTags = new Set();
-            data[currentTab].forEach(item => {
-                if (item.tags) {
-                    const tags = item.tags.split(',').map(t => t.trim()).filter(t => t);
-                    tags.forEach(tag => allTags.add(tag));
-                }
-            });
-            const availableTags = Array.from(allTags).sort();
-            
-            // Create autocomplete dropdown
-            const dropdownContainer = document.createElement('div');
-            dropdownContainer.className = 'tag-autocomplete-container';
-            dropdownContainer.style.position = 'absolute';
-            dropdownContainer.style.display = 'none';
-            dropdownContainer.style.backgroundColor = '#2a2a2a';
-            dropdownContainer.style.border = '1px solid #666';
-            dropdownContainer.style.borderRadius = '4px';
-            dropdownContainer.style.maxHeight = '200px';
-            dropdownContainer.style.overflowY = 'auto';
-            dropdownContainer.style.zIndex = '1000';
-            dropdownContainer.style.minWidth = '150px';
-            
-            let selectedSuggestionIndex = -1;
-            let autocompleteHandled = false;
-            
-            const showSuggestions = (filter) => {
-                const filtered = availableTags.filter(tag => 
-                    tag.toLowerCase().includes(filter.toLowerCase())
-                );
-                
-                if (filtered.length === 0) {
-                    dropdownContainer.style.display = 'none';
-                    selectedSuggestionIndex = -1;
-                    return;
-                }
-                
-                dropdownContainer.innerHTML = '';
-                filtered.forEach((tag, index) => {
-                    const option = document.createElement('div');
-                    option.className = 'tag-suggestion';
-                    option.textContent = tag;
-                    option.style.padding = '8px 12px';
-                    option.style.cursor = 'pointer';
-                    option.style.color = '#ccc';
-                    
-                    option.addEventListener('mouseenter', () => {
-                        // Remove previous highlight
-                        document.querySelectorAll('.tag-suggestion').forEach(el => {
-                            el.style.backgroundColor = 'transparent';
-                            el.style.color = '#ccc';
-                        });
-                        // Highlight this one
-                        option.style.backgroundColor = '#e67e22';
-                        option.style.color = '#fff';
-                        selectedSuggestionIndex = index;
-                    });
-                    
-                    // Use mousedown to avoid input blur before we capture the click
-                    option.addEventListener('mousedown', (evt) => {
-                        evt.preventDefault();
-                        selectedSuggestionIndex = index;
-                        input.value = tag;
-                        hideSuggestions();
-                        input.focus();
-                    });
-                    option.addEventListener('click', () => {
-                        selectedSuggestionIndex = index;
-                        input.value = tag;
-                        hideSuggestions();
-                        input.focus();
-                    });
-                    
-                    dropdownContainer.appendChild(option);
-                });
-                
-                // Position dropdown below input
-                const rect = input.getBoundingClientRect();
-                dropdownContainer.style.display = 'block';
-                dropdownContainer.style.position = 'fixed';
-                dropdownContainer.style.top = (rect.bottom + 2) + 'px';
-                dropdownContainer.style.left = rect.left + 'px';
-                dropdownContainer.style.width = (rect.width - 2) + 'px';
-            };
-            
-            const hideSuggestions = () => {
-                dropdownContainer.style.display = 'none';
-                selectedSuggestionIndex = -1;
-            };
-            
-            // Input event for filtering suggestions
-            input.addEventListener('input', (e) => {
-                const filter = e.target.value.trim();
-                if (filter.length > 0) {
-                    showSuggestions(filter);
-                } else {
-                    hideSuggestions();
-                }
-            });
-            
-            // Store autocomplete handler on input so main keydown handler can check
-            input.handleAutocompleteKeydown = (e) => {
-                const suggestions = dropdownContainer.querySelectorAll('.tag-suggestion');
-                autocompleteHandled = false;
-                
-                if (e.key === 'ArrowDown') {
-                    e.preventDefault();
-                    if (suggestions.length > 0) {
-                        selectedSuggestionIndex = Math.min(selectedSuggestionIndex + 1, suggestions.length - 1);
-                        // Remove previous highlight
-                        suggestions.forEach(el => {
-                            el.style.backgroundColor = 'transparent';
-                            el.style.color = '#ccc';
-                        });
-                        // Highlight selected
-                        suggestions[selectedSuggestionIndex].style.backgroundColor = '#e67e22';
-                        suggestions[selectedSuggestionIndex].style.color = '#fff';
-                    }
-                    autocompleteHandled = true;
-                    return;
-                } else if (e.key === 'ArrowUp') {
-                    e.preventDefault();
-                    if (suggestions.length > 0) {
-                        selectedSuggestionIndex = Math.max(selectedSuggestionIndex - 1, -1);
-                        // Remove previous highlight
-                        suggestions.forEach(el => {
-                            el.style.backgroundColor = 'transparent';
-                            el.style.color = '#ccc';
-                        });
-                        // Highlight selected if valid
-                        if (selectedSuggestionIndex >= 0) {
-                            suggestions[selectedSuggestionIndex].style.backgroundColor = '#e67e22';
-                            suggestions[selectedSuggestionIndex].style.color = '#fff';
-                        }
-                    }
-                    autocompleteHandled = true;
-                    return;
-                } else if (e.key === 'Tab' && suggestions.length > 0) {
-                    e.preventDefault();
-                    // If none selected yet, pick the first
-                    if (selectedSuggestionIndex < 0) {
-                        selectedSuggestionIndex = 0;
-                    }
-                    const selectedTag = suggestions[selectedSuggestionIndex].textContent;
-                    input.value = selectedTag;
-                    hideSuggestions();
-                    autocompleteHandled = true;
-                    return;
-                }
-                
-                autocompleteHandled = false;
-            };
-            
-            // Keyboard navigation for suggestions - called before main keydown handler
-            input.addEventListener('keydown', (e) => {
-                input.handleAutocompleteKeydown(e);
-            }, true); // Use capture phase to handle before main handler
-            
-            document.body.appendChild(dropdownContainer);
-            
-            // Clean up dropdown when input is removed
-            const originalRemove = input.remove.bind(input);
-            input.remove = () => {
-                dropdownContainer.remove();
-                originalRemove();
-            };
         }
         
         // Replace cell content with input
@@ -870,7 +1395,7 @@ export const UI = {
                     name: '',
                     tags: '',
                     reference: '',
-                    weight: 40
+                    weight: 50
                 };
                 
                 // Get current values from the row
@@ -950,22 +1475,16 @@ export const UI = {
                 // Save to localStorage
                 localStorage.setItem(STORAGE_KEY + currentTab, JSON.stringify(data[currentTab]));
                 
-                // Update tag cloud if tags were edited
-                if (fieldName === 'tags') {
+                // Update tag cloud and list if tags or reference were edited (affects filtering)
+                if (fieldName === 'tags' || fieldName === 'reference') {
                     this.renderTagCloud();
+                    this.renderList();
                 }
             }
         };
         
         input.addEventListener('blur', saveEdit);
         input.addEventListener('keydown', (e) => {
-            // If an earlier handler (like tag autocomplete) already handled this key, skip
-            if (e.defaultPrevented) return;
-            if (input.handleAutocompleteKeydown) {
-                input.handleAutocompleteKeydown(e);
-                if (e.defaultPrevented) return;
-            }
-
             if (e.key === 'Enter') {
                 e.preventDefault();
                 saveEdit();
@@ -1361,7 +1880,7 @@ export const UI = {
         if (isNaN(parsed)) {
             return WEIGHT_DEFAULT;
         }
-        return Math.max(1, Math.min(100, parsed));
+        return Math.max(0, Math.min(100, parsed));
     },
 
     preventCSVInjection(value) {
@@ -1372,6 +1891,14 @@ export const UI = {
             return "'" + trimmed; // Prefix with single quote to prevent interpretation
         }
         return value;
+    },
+
+    processNextImportFile() {
+        if (importQueue.length === 0) {
+            return;
+        }
+        const nextFile = importQueue.shift();
+        this.importData(nextFile);
     },
 
     async importData(file) {
@@ -1611,7 +2138,7 @@ export const UI = {
             // Validate weight - must be integer 1-100, default to 50
             const weight = this.sanitizeWeight(item.weight);
             
-            // Validate reference - must be string, default to TBD
+            // Validate reference - must be string, default to None
             let reference = (item.reference || '').trim();
             if (!reference) {
                 reference = REFERENCE_DEFAULT;
@@ -1624,7 +2151,7 @@ export const UI = {
                 }
             }
             
-            // Validate tags - must be string, default to tbd
+            // Validate tags - must be string, default to TBD
             let tags = (item.tags || '').trim();
             if (!tags) {
                 tags = TAGS_DEFAULT;
@@ -1658,6 +2185,8 @@ export const UI = {
         localStorage.setItem(STORAGE_KEY + 'legend_' + id, JSON.stringify(legends));
         this.renderTabs();
         this.switchTab(id);
+        // Process next file in queue
+        this.processNextImportFile();
     },
 
     overwriteTabFromImport() {
@@ -1671,6 +2200,8 @@ export const UI = {
         this.renderTabs();
         this.switchTab(tabId);
         pendingImport = null;
+        // Process next file in queue
+        this.processNextImportFile();
     },
 
     appendTabFromImport() {
@@ -1688,6 +2219,8 @@ export const UI = {
         this.renderTabs();
         this.switchTab(tabId);
         pendingImport = null;
+        // Process next file in queue
+        this.processNextImportFile();
     },
 
     promptDeleteTab() {
@@ -1774,6 +2307,34 @@ export const UI = {
     hideAbout() {
         const modal = document.getElementById('aboutModal');
         modal.classList.add('hidden');
+    },
+
+    showTips() {
+        const modal = document.getElementById('tipsModal');
+        if (modal) {
+            modal.classList.remove('hidden');
+        }
+    },
+
+    hideTips() {
+        const modal = document.getElementById('tipsModal');
+        if (modal) {
+            modal.classList.add('hidden');
+        }
+    },
+
+    showTools() {
+        const modal = document.getElementById('toolsMenu');
+        if (modal) {
+            modal.classList.remove('hidden');
+        }
+    },
+
+    hideTools() {
+        const modal = document.getElementById('toolsMenu');
+        if (modal) {
+            modal.classList.add('hidden');
+        }
     }
 };
 

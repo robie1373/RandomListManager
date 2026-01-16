@@ -1,6 +1,6 @@
 {
   "name": "random-list-manager",
-  "version": "1.12.2",
+  "version": "1.17.2",
   "type": "module",
   "scripts": {
     "test": "vitest run",

@@ -107,6 +107,7 @@ body {
     top: 0;
     z-index: 50;
     border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    gap: 4px;
 }
 
 .app-title-wrapper {
@@ -151,6 +152,10 @@ body {
     white-space: nowrap;
 }
 
+#toolsBtn {
+    margin-left: auto;
+}
+
 .tools-btn:hover {
     background-color: rgba(2, 132, 199, 0.25);
     border-color: var(--primary-400);
@@ -165,37 +170,23 @@ body {
    TOOLS MENU DROPDOWN
    ============================================ */
 
-.tools-menu {
-    position: fixed;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    background-color: var(--bg-surface);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 8px 0;
-    min-width: 240px;
-    max-width: 90vw;
-    max-height: 80vh;
-    overflow-y: auto;
-    box-shadow: var(--shadow-xl);
-    z-index: 1000;
-    animation: slideDown 0.2s ease;
+/* Tools Modal - uses existing .modal and .modal-content styles */
+#toolsMenu.modal-content {
+    max-width: 600px;
 }
 
-@keyframes slideDown {
-    from {
-        opacity: 0;
-        transform: translateY(-12px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+#toolsMenu.modal-content h3 {
+    margin-top: 20px;
+    margin-bottom: 12px;
+    font-size: 1rem;
+    font-weight: 600;
 }
 
 .tools-menu-section {
-    padding: 6px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 8px;
 }
 
 .tools-menu-item {
@@ -412,10 +403,12 @@ body {
     border-radius: 16px;
     padding: 32px;
     max-width: 700px;
+    max-height: 90vh;
     margin: 20px;
     position: relative;
     box-shadow: var(--shadow-xl);
     animation: slideUp 0.2s ease;
+    overflow-y: auto;
 }
 
 @keyframes slideUp {
@@ -488,14 +481,16 @@ body {
 
 .prompt-container {
     position: fixed;
-    bottom: 24px;
-    right: 24px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
     background: var(--bg-surface);
     border: 1px solid var(--border-color);
     border-radius: 12px;
-    padding: 16px;
+    padding: 20px 24px;
     box-shadow: var(--shadow-xl);
-    max-width: 320px;
+    max-width: 90%;
+    width: auto;
     z-index: 1200;
     animation: slideUp 0.2s ease;
 }
@@ -547,6 +542,80 @@ body {
 
 .prompt-btn.ghost:hover {
     background: var(--bg-elevated);
+}
+
+/* Inline prompt for unique items after a roll */
+.unique-prompt {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 20px 24px;
+    border: 1px solid #334155;
+    background: #0f172a;
+    border-radius: 8px;
+    color: #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    z-index: 1000;
+    max-width: 90%;
+    width: auto;
+}
+
+.unique-prompt-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+/* Inline prompt for limit items after a roll */
+.limit-prompt {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 20px 24px;
+    border: 1px solid #334155;
+    background: #0f172a;
+    border-radius: 8px;
+    color: #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    z-index: 1000;
+    max-width: 90%;
+    width: auto;
+}
+
+.limit-prompt-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.btn-inline {
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid #475569;
+    background: #1e293b;
+    color: #e2e8f0;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.btn-inline:hover {
+    background: #24344d;
+}
+
+.btn-inline.primary {
+    background: #0ea5e9;
+    border-color: #0284c7;
+    color: #0b1221;
+}
+
+.btn-inline.primary:hover {
+    background: #38bdf8;
 }
 
 /* ============================================
@@ -695,21 +764,6 @@ body {
     transform: translateY(0);
 }
 
-#copyBtn {
-    background-color: var(--primary-600);
-    color: white;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 6px;
-    cursor: pointer;
-    margin-left: 8px;
-    transition: all 0.2s;
-}
-
-#copyBtn:hover {
-    background-color: var(--primary-700);
-}
-
 /* ============================================
    TABLES
    ============================================ */
@@ -843,6 +897,33 @@ td.editable:hover:not(.example-row) {
     margin-bottom: 16px;
     flex-wrap: wrap;
     gap: 12px;
+}
+
+.search-section {
+    margin-bottom: 20px;
+    width: 100%;
+}
+
+.search-input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.search-input::placeholder {
+    color: var(--text-secondary);
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: var(--primary-500);
+    background: var(--bg-tertiary);
+    box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.1);
 }
 
 .tag-cloud-title {
@@ -1206,4 +1287,118 @@ td.editable:hover:not(.example-row) {
     .tables-container {
         gap: 16px;
     }
+}
+
+/* ============================================
+   BULK EDIT
+   ============================================ */
+
+.checkbox-header {
+    width: 40px;
+    text-align: center;
+}
+
+.checkbox-cell {
+    width: 40px;
+    text-align: center;
+    padding: 8px !important;
+}
+
+.row-checkbox {
+    cursor: pointer;
+    width: 18px;
+    height: 18px;
+}
+
+tr.selected-row {
+    background-color: var(--primary-100) !important;
+}
+
+body.dark-mode tr.selected-row {
+    background-color: rgba(14, 165, 233, 0.2) !important;
+}
+
+.bulk-edit-panel {
+    margin-top: 20px;
+    padding: 20px;
+    background: var(--bg-elevated);
+    border: 2px solid var(--primary-500);
+    border-radius: 12px;
+    box-shadow: var(--shadow-md);
+}
+
+.bulk-edit-header h3 {
+    margin: 0 0 16px 0;
+    color: var(--primary-600);
+    font-size: 1.1rem;
+}
+
+.bulk-edit-content {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.bulk-edit-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.bulk-edit-field label {
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.bulk-edit-field input {
+    padding: 10px 12px;
+    border: 1.5px solid var(--border-color);
+    background-color: var(--bg-surface);
+    color: var(--text-primary);
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 0.95rem;
+}
+
+.bulk-edit-field input:focus {
+    outline: none;
+    border-color: var(--primary-600);
+    box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.1);
+}
+
+.bulk-edit-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.btn-bulk-save,
+.btn-bulk-cancel {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-bulk-save {
+    background-color: var(--primary-600);
+    color: white;
+}
+
+.btn-bulk-save:hover {
+    background-color: var(--primary-700);
+    transform: translateY(-1px);
+}
+
+.btn-bulk-cancel {
+    background-color: var(--bg-surface);
+    color: var(--text-primary);
+    border: 1.5px solid var(--border-color);
+}
+
+.btn-bulk-cancel:hover {
+    background-color: var(--bg-elevated);
 }

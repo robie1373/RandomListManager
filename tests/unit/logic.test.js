@@ -71,6 +71,63 @@ describe('DiceEngine - parseDice', () => {
     });
 });
 
+describe('DiceEngine - parseDice with cleanResults', () => {
+    it('omits dice notation when cleanResults is true', () => {
+        const result = DiceEngine.parseDice("Loot 1d1+10", true);
+        expect(result).toBe("Loot 11");
+    });
+
+    it('includes dice notation when cleanResults is false', () => {
+        const result = DiceEngine.parseDice("Loot 1d1+10", false);
+        expect(result).toBe("Loot 11 (1d1+10)");
+    });
+
+    it('returns only dice total when cleanResults is true and input is pure dice', () => {
+        const result = DiceEngine.parseDice("2d4", true);
+        expect(result).toMatch(/^\d+$/); // Just a number, no notation
+    });
+
+    it('handles multiple dice expressions with cleanResults', () => {
+        const result = DiceEngine.parseDice("Roll 2d4 and 1d6+2", true);
+        expect(result).toMatch(/^Roll \d+ and \d+$/); // No notation in output
+        expect(result).not.toContain("(");
+        expect(result).not.toContain(")");
+    });
+
+    it('omits multiplication notation when cleanResults is true', () => {
+        const result = DiceEngine.parseDice("2d6x10", true);
+        const match = result.match(/^(\d+)$/);
+        expect(match).not.toBeNull();
+        const value = parseInt(match[1], 10);
+        expect(value % 10).toBe(0);
+    });
+
+    it('handles text without dice when cleanResults is true', () => {
+        const result = DiceEngine.parseDice("Just a regular item", true);
+        expect(result).toBe("Just a regular item");
+    });
+
+    it('subtraction modifier omitted when cleanResults is true', () => {
+        const result = DiceEngine.parseDice("1d10-3", true);
+        expect(result).toMatch(/^\d+$/); // Just the total (normalized to minimum 1)
+        const value = parseInt(result, 10);
+        expect(value).toBeGreaterThanOrEqual(1);
+        expect(result).not.toContain("(");
+    });
+
+    it('addition modifier omitted when cleanResults is true', () => {
+        const result = DiceEngine.parseDice("1d6 + 5", true);
+        expect(result).toMatch(/^\d+$/); // Just the total
+        expect(result).not.toContain("(");
+    });
+
+    it('mixed text and dice with cleanResults true', () => {
+        const result = DiceEngine.parseDice("A 2d4 and B 1d6", true);
+        expect(result).toMatch(/^A \d+ and B \d+$/);
+        expect(result).not.toContain("(");
+    });
+});
+
 describe('DiceEngine - pickWeightedItem', () => {
     it('returns null for empty list', () => {
         const list = [];
@@ -89,7 +146,7 @@ describe('DiceEngine - pickWeightedItem', () => {
         expect(picked.name).toBe("Epic Sword");
     });
 
-    it('defaults to weight 40 for items without weight property', () => {
+    it('defaults to weight 50 for items without weight property', () => {
         const list = [
             { name: "Item A" },
             { name: "Item B" }
@@ -100,9 +157,9 @@ describe('DiceEngine - pickWeightedItem', () => {
         expect(['Item A', 'Item B']).toContain(picked.name);
     });
 
-    it('constrains weights between 1 and 100', () => {
+    it('constrains weights between 0 and 100', () => {
         const list = [
-            { name: "Low", weight: -50 },  // Should be clamped to 1
+            { name: "Low", weight: -50 },  // Should be clamped to 0
             { name: "High", weight: 200 }  // Should be clamped to 100
         ];
         
@@ -113,25 +170,25 @@ describe('DiceEngine - pickWeightedItem', () => {
             if (picked.name === "High") highCount++;
         }
         
-        // With High clamped to 100 and Low to 1, High should win ~99% of the time
-        expect(highCount).toBeGreaterThan(80); // Allowing for random variance
+        // With High clamped to 100 and Low to 0, High should win every time
+        expect(highCount).toBe(100);
     });
 
-    it('handles items with weight 0 by clamping to 1', () => {
+    it('handles items with weight 0 by excluding them from rolls', () => {
         const list = [
             { name: "Zero Weight", weight: 0 },
             { name: "Normal Weight", weight: 50 }
         ];
         
-        // Even with weight 0 clamped to 1, should occasionally pick it
+        // With weight 0 excluded, should never pick the zero-weight item
         let zeroCount = 0;
         for (let i = 0; i < 500; i++) {
             const picked = DiceEngine.pickWeightedItem(list);
             if (picked.name === "Zero Weight") zeroCount++;
         }
         
-        // Should have ~2% chance (1/51), so should pick many times in 500 rolls
-        expect(zeroCount).toBeGreaterThan(3); // At least a few times (allows for variance)
+        // With zero probability, it should not be selected
+        expect(zeroCount).toBe(0);
     });
 
     it('respects weight distribution across multiple items', () => {
@@ -214,21 +271,21 @@ describe('UIUtils - formatTabLabel', () => {
 });
 
 describe('UIUtils - constrainWeight', () => {
-    it('defaults to 40 when weight is undefined', () => {
-        expect(UIUtils.constrainWeight(undefined)).toBe(40);
+    it('defaults to 50 when weight is undefined', () => {
+        expect(UIUtils.constrainWeight(undefined)).toBe(50);
     });
 
-    it('defaults to 40 when weight is null', () => {
-        expect(UIUtils.constrainWeight(null)).toBe(40);
+    it('defaults to 50 when weight is null', () => {
+        expect(UIUtils.constrainWeight(null)).toBe(50);
     });
 
-    it('clamps negative weights to 1', () => {
-        expect(UIUtils.constrainWeight(-50)).toBe(1);
-        expect(UIUtils.constrainWeight(-1)).toBe(1);
+    it('clamps negative weights to 0', () => {
+        expect(UIUtils.constrainWeight(-50)).toBe(0);
+        expect(UIUtils.constrainWeight(-1)).toBe(0);
     });
 
-    it('keeps weight 0 clamped to 1', () => {
-        expect(UIUtils.constrainWeight(0)).toBe(1);
+    it('keeps weight 0 unchanged', () => {
+        expect(UIUtils.constrainWeight(0)).toBe(0);
     });
 
     it('keeps valid weights unchanged', () => {
@@ -250,7 +307,7 @@ describe('UIUtils - createItem', () => {
             name: 'Test Item',
             tags: '',
             reference: '',
-            weight: 40,
+            weight: 50,
             ref: ''
         });
     });
@@ -276,9 +333,9 @@ describe('UIUtils - createItem', () => {
         expect(item.name).toBe('');
     });
 
-    it('clamps negative weight to 1', () => {
+    it('clamps negative weight to 0', () => {
         const item = UIUtils.createItem('Test', '', '', -10);
-        expect(item.weight).toBe(1);
+        expect(item.weight).toBe(0);
     });
 });
 
@@ -302,7 +359,7 @@ describe('UIUtils - normalizeItem', () => {
             name: 'Item',
             tags: '',
             reference: '',
-            weight: 40,
+            weight: 50,
             ref: ''
         });
     });

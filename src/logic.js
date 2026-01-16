@@ -1,6 +1,6 @@
 // src/logic.js
 export const DiceEngine = {
-    parseDice: (text) => {
+    parseDice: (text, cleanResults = false) => {
         // Support optional surrounding parentheses before modifiers, e.g., "(3d6)x10".
         const diceRegex = /\(?((?:\d+))d((?:\d+))(?:\s*\)?\s*([+\-*x])\s*(\d+))?/gi;
         return text.replace(diceRegex, (match, count, sides, op, mod) => {
@@ -19,19 +19,21 @@ export const DiceEngine = {
                     total *= parseInt(mod);
                 }
             }
+            // Normalize negative results to minimum of 1
+            total = Math.max(1, total);
             const normalizedOp = operator ? (operator === '*' ? 'x' : operator) : '';
             const notation = mod ? `${count}d${sides}${normalizedOp}${mod}` : `${count}d${sides}`;
-            return `${total} (${notation})`;
+            return cleanResults ? `${total}` : `${total} (${notation})`;
         });
     },
 
     pickWeightedItem: (list) => {
         if (!list || list.length === 0) return null;
         
-        // Constrain weights between 1 and 100, default to 40
+        // Constrain weights between 0 and 100, default to 50
         const constrainWeight = (weight) => {
-            const w = weight !== undefined && weight !== null ? weight : 40;
-            return Math.max(1, Math.min(100, w));
+            const w = weight !== undefined && weight !== null ? weight : 50;
+            return Math.max(0, Math.min(100, w));
         };
         
         const totalWeight = list.reduce((sum, item) => sum + constrainWeight(item.weight), 0);
@@ -57,17 +59,17 @@ export const UIUtils = {
     },
 
     /**
-     * Constrain weight between 1 and 100, default to 40
+     * Constrain weight between 0 and 100, default to 50
      */
     constrainWeight: (weight) => {
-        const w = weight !== undefined && weight !== null ? weight : 40;
-        return Math.max(1, Math.min(100, w));
+        const w = weight !== undefined && weight !== null ? weight : 50;
+        return Math.max(0, Math.min(100, w));
     },
 
     /**
      * Create a normalized item with default values
      */
-    createItem: (name, tags = '', reference = '', weight = 40) => ({
+    createItem: (name, tags = '', reference = '', weight = 50) => ({
         name: name || '',
         tags: tags || '',
         reference: reference || '',
