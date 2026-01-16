@@ -71,6 +71,63 @@ describe('DiceEngine - parseDice', () => {
     });
 });
 
+describe('DiceEngine - parseDice with cleanResults', () => {
+    it('omits dice notation when cleanResults is true', () => {
+        const result = DiceEngine.parseDice("Loot 1d1+10", true);
+        expect(result).toBe("Loot 11");
+    });
+
+    it('includes dice notation when cleanResults is false', () => {
+        const result = DiceEngine.parseDice("Loot 1d1+10", false);
+        expect(result).toBe("Loot 11 (1d1+10)");
+    });
+
+    it('returns only dice total when cleanResults is true and input is pure dice', () => {
+        const result = DiceEngine.parseDice("2d4", true);
+        expect(result).toMatch(/^\d+$/); // Just a number, no notation
+    });
+
+    it('handles multiple dice expressions with cleanResults', () => {
+        const result = DiceEngine.parseDice("Roll 2d4 and 1d6+2", true);
+        expect(result).toMatch(/^Roll \d+ and \d+$/); // No notation in output
+        expect(result).not.toContain("(");
+        expect(result).not.toContain(")");
+    });
+
+    it('omits multiplication notation when cleanResults is true', () => {
+        const result = DiceEngine.parseDice("2d6x10", true);
+        const match = result.match(/^(\d+)$/);
+        expect(match).not.toBeNull();
+        const value = parseInt(match[1], 10);
+        expect(value % 10).toBe(0);
+    });
+
+    it('handles text without dice when cleanResults is true', () => {
+        const result = DiceEngine.parseDice("Just a regular item", true);
+        expect(result).toBe("Just a regular item");
+    });
+
+    it('subtraction modifier omitted when cleanResults is true', () => {
+        const result = DiceEngine.parseDice("1d10-3", true);
+        expect(result).toMatch(/^\d+$/); // Just the total (normalized to minimum 1)
+        const value = parseInt(result, 10);
+        expect(value).toBeGreaterThanOrEqual(1);
+        expect(result).not.toContain("(");
+    });
+
+    it('addition modifier omitted when cleanResults is true', () => {
+        const result = DiceEngine.parseDice("1d6 + 5", true);
+        expect(result).toMatch(/^\d+$/); // Just the total
+        expect(result).not.toContain("(");
+    });
+
+    it('mixed text and dice with cleanResults true', () => {
+        const result = DiceEngine.parseDice("A 2d4 and B 1d6", true);
+        expect(result).toMatch(/^A \d+ and B \d+$/);
+        expect(result).not.toContain("(");
+    });
+});
+
 describe('DiceEngine - pickWeightedItem', () => {
     it('returns null for empty list', () => {
         const list = [];
