@@ -2,6 +2,7 @@
   "name": "Random List Manager",
   "short_name": "List Manager",
   "description": "A web app for managing random items, encounters, and improvised weapons for solo RPGs",
+  "license": "MIT",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

@@ -253,4 +253,8 @@ The app includes a service worker for offline functionality. First visit must be
 
 ## License
 
-Created for solo tabletop RPG gaming.
+MIT License © 2026 Robie1373
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+You are free to use, modify, and distribute this software with proper attribution.
