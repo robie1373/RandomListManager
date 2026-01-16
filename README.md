@@ -35,6 +35,18 @@ If you try to commit/push on `main`, a message will explain how to create a bran
 
 ## Recent Changes
 
+### Version 1.17.2 (January 2026)
+
+#### New Features
+- **Clean Results Toggle Refined**: Clean mode now omits references and dice notation at generation time (no regex post-strip). Applies to main rolls and pool tag cascades.
+- **Inventory Add Button**: Adds rolled items directly into one or more inventory tabs via a selection prompt; button appears only when inventory tabs exist.
+- **UI Polish**: Copy button styled to match the inventory button; cascade suffix now shows filter name without the `pool=` prefix.
+
+#### Technical Changes
+- **Dice Engine**: `parseDice(text, cleanResults)` now returns totals without notation when clean mode is on and clamps any negative roll results to a minimum of 1.
+- **Tests**: Added clean-results unit coverage for `parseDice` and related scenarios (213 tests total).
+- **CI/CD**: Added GitHub Actions workflows for CI (unit tests) and Deploy to GitHub Pages; both run on Node 24.
+
 ### Version 1.16.0 (January 2026)
 
 #### New Features
