@@ -1,4 +1,7 @@
 // src/logic.js
+// MIT License © 2026 Robie1373
+// Random List Manager - Dice engine and utility functions
+
 export const DiceEngine = {
     parseDice: (text, cleanResults = false) => {
         // Support optional surrounding parentheses before modifiers, e.g., "(3d6)x10".

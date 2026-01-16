@@ -1,3 +1,6 @@
+// MIT License © 2026 Robie1373
+// Random List Manager - User interface and application logic
+
 import { DiceEngine } from './logic.js';
 
 // --- Application State ---
