@@ -165,6 +165,7 @@ export const UI = {
         // Main Action Buttons
         document.getElementById('rollBtn').addEventListener('click', () => this.handleRoll());
         document.getElementById('copyBtn').addEventListener('click', () => this.copyToClipboard());
+        document.getElementById('addToInventoryBtn').addEventListener('click', () => this.handleAddToInventory());
 
         // Unique item inline prompt actions
         const uniquePromptYes = document.getElementById('uniquePromptYes');
@@ -786,6 +787,7 @@ export const UI = {
             rollResults[currentTab] = capitalizedResult;
             
             document.getElementById('copyBtn').classList.remove('hidden');
+            this.updateInventoryButtonVisibility();
             this.addToHistory(resultText);
             this.renderRollLog();
 
@@ -871,6 +873,110 @@ export const UI = {
         
         const rawName = rolled.reference ? `${rolled.name} (${rolled.reference})` : rolled.name;
         return DiceEngine.parseDice(rawName);
+    },
+
+    getInventoryTabs() {
+        // Find all tabs that contain "inventory" in the name (case-insensitive)
+        return tabs.filter(tab => tab.name.toLowerCase().includes('inventory'));
+    },
+
+    updateInventoryButtonVisibility() {
+        const inventoryTabs = this.getInventoryTabs();
+        const addToInventoryBtn = document.getElementById('addToInventoryBtn');
+        if (inventoryTabs.length > 0) {
+            addToInventoryBtn.classList.remove('hidden');
+        } else {
+            addToInventoryBtn.classList.add('hidden');
+        }
+    },
+
+    handleAddToInventory() {
+        const inventoryTabs = this.getInventoryTabs();
+        
+        if (inventoryTabs.length === 0) {
+            return; // Should not happen as button is hidden, but safety check
+        }
+        
+        const resultText = rollResults[currentTab] || document.getElementById('result').innerText;
+        
+        if (inventoryTabs.length === 1) {
+            // Only one inventory tab, add directly
+            this.addToInventory(inventoryTabs[0].id, resultText);
+        } else {
+            // Multiple inventory tabs, prompt user to select
+            this.promptSelectInventory(inventoryTabs, resultText);
+        }
+    },
+
+    promptSelectInventory(inventoryTabs, resultText) {
+        const promptContainer = document.getElementById('promptContainer');
+        const promptMessage = document.getElementById('promptMessage');
+        const promptPrimary = document.getElementById('promptPrimary');
+        const promptSecondary = document.getElementById('promptSecondary');
+        const promptCancel = document.getElementById('promptCancel');
+
+        // Build selection message
+        let message = 'Select which inventory to add to:\n';
+        inventoryTabs.forEach((tab, index) => {
+            message += `\n${index + 1}. ${tab.name}`;
+        });
+
+        promptMessage.innerText = message;
+        promptPrimary.innerText = inventoryTabs[0].name;
+        promptPrimary.onclick = () => {
+            this.addToInventory(inventoryTabs[0].id, resultText);
+            this.hidePrompt();
+        };
+
+        if (inventoryTabs.length > 1) {
+            promptSecondary.innerText = inventoryTabs[1].name;
+            promptSecondary.style.display = 'block';
+            promptSecondary.onclick = () => {
+                this.addToInventory(inventoryTabs[1].id, resultText);
+                this.hidePrompt();
+            };
+        }
+
+        // If more than 2 inventory tabs, use Cancel button for 3rd option
+        if (inventoryTabs.length > 2) {
+            promptCancel.innerText = inventoryTabs[2].name;
+            promptCancel.onclick = () => {
+                this.addToInventory(inventoryTabs[2].id, resultText);
+                this.hidePrompt();
+            };
+        } else {
+            promptCancel.innerText = 'Cancel';
+            promptCancel.onclick = () => {
+                this.hidePrompt();
+            };
+        }
+
+        promptContainer.classList.remove('hidden');
+    },
+
+    addToInventory(tabId, resultText) {
+        if (!data[tabId]) {
+            data[tabId] = [];
+        }
+
+        // Add the result as a new item with default weight
+        const newItem = {
+            name: resultText,
+            tags: '',
+            reference: '',
+            weight: 50
+        };
+
+        data[tabId].push(newItem);
+        this.saveData();
+
+        // If we're on the inventory tab, re-render the list
+        if (currentTab === tabId) {
+            this.renderList();
+        }
+
+        // Show brief feedback (optional - could use a toast notification)
+        console.log(`Added "${resultText}" to inventory tab ${tabId}`);
     },
 
     showLimitPrompt(item) {
