@@ -51,6 +51,22 @@
                     </label>
                 </div>
                 
+                <h3>Result Display</h3>
+                <div class="tools-menu-section">
+                    <label class="tools-menu-item">
+                        <div class="switch-container">
+                            <span class="switch-label">Detailed</span>
+                            <input type="checkbox" id="cleanResultsToggle" class="switch-input">
+                            <span class="switch-slider"></span>
+                            <span class="switch-label">Clean</span>
+                        </div>
+                    </label>
+                    <p style="font-size: 0.9em; color: var(--text-secondary); margin-top: 8px;">
+                        <strong>Detailed:</strong> Shows dice rolls and references (e.g., "3 (2d3) Orcs (dbr 95)")<br>
+                        <strong>Clean:</strong> Hides dice notation and references (e.g., "3 Orcs")
+                    </p>
+                </div>
+                
                 <h3>Data Management</h3>
                 <div class="tools-menu-section">
                     <button class="tools-menu-btn" id="exportCSV"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg> Export CSV</button>
@@ -275,6 +291,19 @@
                     <li><strong>Example:</strong> Use "limit=3" for consumable items (potions, arrows) that can only be rolled 3 times before running out. Add "limit=5" for encounters that can occur up to 5 times.</li>
                     <li><strong>Filtering:</strong> Click the "limit" tag in the tag cloud to filter and show only items that have active limits.</li>
                     <li><strong>Persistence:</strong> The limit tag remains as "limit=0" even after it reaches zero, allowing you to see which items have been exhausted.</li>
+                </ul>
+                
+                <h3>Pool Tags (Cascading Rolls)</h3>
+                <ul>
+                    <li><strong>What it does:</strong> Roll on one table and automatically cascade rolls onto other tables based on a filter tag.</li>
+                    <li><strong>Syntax:</strong> Add a tag like "pool=TargetTab::AnotherTab::filtername" to any item.</li>
+                    <li><strong>How it works:</strong> When you roll an item with a pool tag, the system automatically searches the target tables for items matching the filter tag and randomly selects one. Results are appended to your roll.</li>
+                    <li><strong>Example:</strong> Create a Treasure tab with "Ancient Chest" tagged "pool=Loot::cursed". Create a Loot tab with items tagged "cursed" (like Gold Coins, Silver Chalice). Rolling Ancient Chest produces: "Ancient Chest with Gold Coins from Loot".</li>
+                    <li><strong>Multiple targets:</strong> Use multiple target tables like "pool=Loot::Encounters::Common" to cascade across several tables at once.</li>
+                    <li><strong>Filter matching:</strong> Target items must have the exact filter tag (e.g., "pool=cursed") in their tags to match. Just "cursed" alone won't match.</li>
+                    <li><strong>Case-insensitive:</strong> Tab names are matched case-insensitively, so "pool=loot" matches a "Loot" tab.</li>
+                    <li><strong>Silent skipping:</strong> If a target table has no matching items, it's simply skipped without error.</li>
+                    <li><strong>Weighted selection:</strong> Matching items are selected using the standard weighted randomization system, so items with higher weights are more likely to appear.</li>
                 </ul>
                 
                 <h3>Weight Values</h3>

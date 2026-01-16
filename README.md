@@ -41,7 +41,9 @@ If you try to commit/push on `main`, a message will explain how to create a bran
 - **Pool Tags for Cascading Rolls**: Roll on one table and automatically cascade rolls onto other tables
   - Syntax: `pool=TargetTab::AnotherTab::filtername`
   - Supports multiple target tables (case-insensitive matching)
-  - Results formatted as: `"Base Item with Match from TargetTab"`
+  - Rows in target tables must have a tag of `pool=filtername` to match
+    - Just `filtername` will not match.
+  - Results formatted as: `"Base Item with Match from TargetTab These are filtername"`
   - Skip tables silently if no matching items found
   - Prevents recursion (pool tags in target results ignored)
   - Uses weighted randomization for target selections
@@ -165,7 +167,7 @@ pool=TargetTab::AnotherTab::filtername
 1. When you roll an item with a pool tag, the base item is displayed
 2. For each target table, the system searches for items containing the filter tag
 3. If matches are found, one is randomly selected and appended to the result
-4. Result format: `"Base Item with Match1 from TargetTab with Match2 from AnotherTab"`
+4. Result format: `"Base Item with Match1 from TargetTab with Match2 from AnotherTab These are filtername"`
 5. If no matches exist in a target table, that table is skipped silently
 
 **Example:**
@@ -175,15 +177,15 @@ Create a "Treasure" tab with an item:
 - Tags: `pool=Loot::Encounters::cursed`
 
 Create a "Loot" tab with items:
-- Name: `Gold Coins` | Tags: `cursed, common`
-- Name: `Silver Chalice` | Tags: `cursed, rare`
+- Name: `Gold Coins` | Tags: `pool=cursed, common`
+- Name: `Silver Chalice` | Tags: `pool=cursed, rare`
 
 Create an "Encounters" tab with items:
-- Name: `Angry Dragon` | Tags: `cursed`
+- Name: `Angry Dragon` | Tags: `pool=cursed`
 - Name: `Lost Merchant` | Tags: `neutral`
 
 Rolling "Ancient Chest" might produce:
-- `"Ancient Chest with Gold Coins from Loot with Angry Dragon from Encounters"`
+- `"Ancient Chest with Gold Coins from Loot with Angry Dragon from Encounters These are cursed"`
 
 **Key Features:**
 - **Case-insensitive tab matching** - `pool=loot::encounters` matches tabs named "Loot" and "Encounters"
