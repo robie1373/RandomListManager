@@ -227,6 +227,16 @@ export const UI = {
             });
         }
 
+        // Clean Results Toggle
+        const cleanResultsToggle = document.getElementById('cleanResultsToggle');
+        const savedCleanResults = localStorage.getItem('cleanResults');
+        if (savedCleanResults !== null) {
+            cleanResultsToggle.checked = JSON.parse(savedCleanResults);
+        }
+        cleanResultsToggle.addEventListener('change', () => {
+            localStorage.setItem('cleanResults', cleanResultsToggle.checked);
+        });
+
 
         // Export buttons
         document.getElementById('exportCSV').addEventListener('click', () => {
@@ -727,6 +737,16 @@ export const UI = {
         this.renderList();
     },
 
+    cleanResultText(text) {
+        // Remove dice notation like (2d3), (1d5+5), etc.
+        let cleaned = text.replace(/\s*\(\d+d\d+(?:[+\-]\d+)*\)/g, '');
+        // Remove references like (dbr 95), (DBR 95), etc. - any parenthetical with optional prefix
+        cleaned = cleaned.replace(/\s*\([a-zA-Z]*\s*\d+\)/g, '');
+        // Clean up any double spaces
+        cleaned = cleaned.replace(/\s+/g, ' ').trim();
+        return cleaned;
+    },
+
     handleRoll() {
         const list = this.getFilteredList();
         // Exclude items with weight 0 from rolling
@@ -748,6 +768,15 @@ export const UI = {
                         capitalizedResult += ` with ${capitalizedPoolRoll} from ${targetTab.name}`;
                     }
                 }
+                // Append filter tag name at the end of cascade results (without leading 'pool=')
+                const filterNameForDisplay = (poolInfo.filterTag || '').replace(/^pool=/i, '');
+                capitalizedResult += ` These are ${filterNameForDisplay}`;
+            }
+            
+            // Apply clean results formatting if enabled
+            const cleanResultsToggle = document.getElementById('cleanResultsToggle');
+            if (cleanResultsToggle && cleanResultsToggle.checked) {
+                capitalizedResult = this.cleanResultText(capitalizedResult);
             }
             
             const resultEl = document.getElementById('result');
@@ -796,13 +825,14 @@ export const UI = {
     },
 
     parsePoolTag(tagsStr) {
-        // Parse pool=tabname::tabname::filtername format
+        // Parse pool=tabname::tabname::filtername format (case-insensitive)
         // Returns { targetTabs: [tab objects], filterTag: 'pool=filtername' } or null
         if (!tagsStr) return null;
         const tags = tagsStr.split(',').map(t => t.trim());
         for (const tag of tags) {
-            if (tag.startsWith('pool=')) {
-                const poolSpec = tag.substring(5); // Remove 'pool='
+            const lowerTag = tag.toLowerCase();
+            if (lowerTag.startsWith('pool=')) {
+                const poolSpec = lowerTag.substring(5); // Remove 'pool='
                 const parts = poolSpec.split('::');
                 if (parts.length < 2) continue; // Must have at least one tab and a filter
                 
