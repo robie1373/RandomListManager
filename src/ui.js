@@ -738,18 +738,6 @@ export const UI = {
         this.renderList();
     },
 
-    cleanResultText(text) {
-        // Remove dice notation like (2d3), (1d5+5), (3d6x10) etc.
-        let cleaned = text.replace(/\s*\(\d+d\d+(?:[+\-x]\d+)*\)/g, '');
-        // Remove parenthetical references that contain letters but NOT colons
-        // This catches (reference), (dbr 95), (see table 5), etc.
-        // But preserves lookup tables like (1: Horn 2: Flute 3: Harp...)
-        cleaned = cleaned.replace(/\s*\((?![^)]*:)[^)]*[a-zA-Z][^)]*\)/g, '');
-        // Clean up any double spaces
-        cleaned = cleaned.replace(/\s+/g, ' ').trim();
-        return cleaned;
-    },
-
     handleRoll() {
         const list = this.getFilteredList();
         // Exclude items with weight 0 from rolling
@@ -757,8 +745,15 @@ export const UI = {
         const selectedItem = DiceEngine.pickWeightedItem(rollableList);
         
         if (selectedItem) {
-            const rawName = selectedItem.reference ? `${selectedItem.name} (${selectedItem.reference})` : selectedItem.name;
-            const resultText = DiceEngine.parseDice(rawName);
+            // Check clean results setting
+            const cleanResultsToggle = document.getElementById('cleanResultsToggle');
+            const shouldCleanResults = cleanResultsToggle && cleanResultsToggle.checked;
+            
+            // Build rawName conditionally - only include reference if NOT cleaning results
+            const rawName = (selectedItem.reference && !shouldCleanResults) 
+                ? `${selectedItem.name} (${selectedItem.reference})` 
+                : selectedItem.name;
+            const resultText = DiceEngine.parseDice(rawName, shouldCleanResults);
             let capitalizedResult = capitalizeWords(resultText);
             
             // Check for pool tag and append pool rolls
@@ -774,12 +769,6 @@ export const UI = {
                 // Append filter tag name at the end of cascade results (without leading 'pool=')
                 const filterNameForDisplay = (poolInfo.filterTag || '').replace(/^pool=/i, '');
                 capitalizedResult += ` These are ${filterNameForDisplay}`;
-            }
-            
-            // Apply clean results formatting if enabled
-            const cleanResultsToggle = document.getElementById('cleanResultsToggle');
-            if (cleanResultsToggle && cleanResultsToggle.checked) {
-                capitalizedResult = this.cleanResultText(capitalizedResult);
             }
             
             const resultEl = document.getElementById('result');
@@ -873,8 +862,15 @@ export const UI = {
         const rolled = DiceEngine.pickWeightedItem(eligible);
         if (!rolled) return null;
         
-        const rawName = rolled.reference ? `${rolled.name} (${rolled.reference})` : rolled.name;
-        return DiceEngine.parseDice(rawName);
+        // Check clean results setting
+        const cleanResultsToggle = document.getElementById('cleanResultsToggle');
+        const shouldCleanResults = cleanResultsToggle && cleanResultsToggle.checked;
+        
+        // Build rawName conditionally - only include reference if NOT cleaning results
+        const rawName = (rolled.reference && !shouldCleanResults)
+            ? `${rolled.name} (${rolled.reference})` 
+            : rolled.name;
+        return DiceEngine.parseDice(rawName, shouldCleanResults);
     },
 
     getInventoryTabs() {
