@@ -739,10 +739,12 @@ export const UI = {
     },
 
     cleanResultText(text) {
-        // Remove dice notation like (2d3), (1d5+5), etc.
-        let cleaned = text.replace(/\s*\(\d+d\d+(?:[+\-]\d+)*\)/g, '');
-        // Remove references like (dbr 95), (DBR 95), etc. - any parenthetical with optional prefix
-        cleaned = cleaned.replace(/\s*\([a-zA-Z]*\s*\d+\)/g, '');
+        // Remove dice notation like (2d3), (1d5+5), (3d6x10) etc.
+        let cleaned = text.replace(/\s*\(\d+d\d+(?:[+\-x]\d+)*\)/g, '');
+        // Remove parenthetical references that contain letters but NOT colons
+        // This catches (reference), (dbr 95), (see table 5), etc.
+        // But preserves lookup tables like (1: Horn 2: Flute 3: Harp...)
+        cleaned = cleaned.replace(/\s*\((?![^)]*:)[^)]*[a-zA-Z][^)]*\)/g, '');
         // Clean up any double spaces
         cleaned = cleaned.replace(/\s+/g, ' ').trim();
         return cleaned;
