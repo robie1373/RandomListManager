@@ -1,6 +1,6 @@
 {
   "name": "random-list-manager",
-  "version": "1.17.4",
+  "version": "1.17.3",
   "type": "module",
   "license": "MIT",
   "scripts": {
