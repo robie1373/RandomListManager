@@ -1,17 +1,16 @@
-name: Deploy to GitHub Pages
+name: CI
 
 on:
+  pull_request:
   push:
     branches: [ main, master ]
-  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  deploy:
+  test:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
 
@@ -26,10 +25,3 @@ jobs:
 
       - name: Run unit tests
         run: npm test
-
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./
-          cname: false
