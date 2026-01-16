@@ -227,6 +227,16 @@ export const UI = {
             });
         }
 
+        // Clean Results Toggle
+        const cleanResultsToggle = document.getElementById('cleanResultsToggle');
+        const savedCleanResults = localStorage.getItem('cleanResults');
+        if (savedCleanResults !== null) {
+            cleanResultsToggle.checked = JSON.parse(savedCleanResults);
+        }
+        cleanResultsToggle.addEventListener('change', () => {
+            localStorage.setItem('cleanResults', cleanResultsToggle.checked);
+        });
+
 
         // Export buttons
         document.getElementById('exportCSV').addEventListener('click', () => {
@@ -727,6 +737,16 @@ export const UI = {
         this.renderList();
     },
 
+    cleanResultText(text) {
+        // Remove dice notation like (2d3), (1d5+5), etc.
+        let cleaned = text.replace(/\s*\(\d+d\d+(?:[+\-]\d+)*\)/g, '');
+        // Remove references like (dbr 95), (DBR 95), etc. - any parenthetical with optional prefix
+        cleaned = cleaned.replace(/\s*\([a-zA-Z]*\s*\d+\)/g, '');
+        // Clean up any double spaces
+        cleaned = cleaned.replace(/\s+/g, ' ').trim();
+        return cleaned;
+    },
+
     handleRoll() {
         const list = this.getFilteredList();
         // Exclude items with weight 0 from rolling
@@ -748,6 +768,12 @@ export const UI = {
                         capitalizedResult += ` with ${capitalizedPoolRoll} from ${targetTab.name}`;
                     }
                 }
+            }
+            
+            // Apply clean results formatting if enabled
+            const cleanResultsToggle = document.getElementById('cleanResultsToggle');
+            if (cleanResultsToggle && cleanResultsToggle.checked) {
+                capitalizedResult = this.cleanResultText(capitalizedResult);
             }
             
             const resultEl = document.getElementById('result');
