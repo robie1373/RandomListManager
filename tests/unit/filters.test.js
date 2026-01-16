@@ -321,9 +321,3 @@ describe('parseDice cleanResults with references', () => {
     });
 });
 
-describe('failing test', () => {
-    it('should fail', () => {
-        expect(1).toEqual(2);
-    });
-
-});
