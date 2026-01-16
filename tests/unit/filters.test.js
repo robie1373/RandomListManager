@@ -320,4 +320,3 @@ describe('parseDice cleanResults with references', () => {
         expect(result2).toBe("Sword");
     });
 });
-
