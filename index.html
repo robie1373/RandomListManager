@@ -154,7 +154,8 @@
         <!-- Results Display -->
         <div id="resultWrapper">
             <div id="result">Ready to roll...</div>
-            <button id="copyBtn" class="hidden"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copy</button>
+            <button id="copyBtn" class="hidden"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><rect x="8" y="8" width="13" height="13" rx="2" ry="2"></rect></svg> Copy</button>
+            <button id="addToInventoryBtn" class="hidden"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg> Add to Inventory</button>
             <button id="rollBtn" class="btn-random"><svg class="icon" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="20" height="20" rx="2" fill="none"/><circle cx="7" cy="7" r="1.5"/><circle cx="17" cy="7" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="7" cy="17" r="1.5"/><circle cx="17" cy="17" r="1.5"/></svg> Roll on Table</button>
             <div id="uniquePrompt" class="unique-prompt hidden" role="status">
                 <div class="unique-prompt-text">This is marked as unique. Would you like to set the weight to zero so it cannot be rolled again?</div>
@@ -304,6 +305,16 @@
                     <li><strong>Case-insensitive:</strong> Tab names are matched case-insensitively, so "pool=loot" matches a "Loot" tab.</li>
                     <li><strong>Silent skipping:</strong> If a target table has no matching items, it's simply skipped without error.</li>
                     <li><strong>Weighted selection:</strong> Matching items are selected using the standard weighted randomization system, so items with higher weights are more likely to appear.</li>
+                </ul>
+                
+                <h3>Inventory Management</h3>
+                <ul>
+                    <li><strong>What it does:</strong> Quickly save roll results to an inventory tab for later reference.</li>
+                    <li><strong>How to set up:</strong> Create a tab with "inventory" in the name (e.g., "Inventory", "Party Inventory", "Player 1 Inventory").</li>
+                    <li><strong>How it works:</strong> After rolling, an "Add to Inventory" button appears next to the Copy button. Click it to add the roll result to your inventory tab.</li>
+                    <li><strong>Multiple inventories:</strong> If you have multiple tabs with "inventory" in the name, you'll be prompted to choose which one to add the item to.</li>
+                    <li><strong>Example:</strong> Roll on a Loot table and get "Gold Coins". Click "Add to Inventory" to store it in your Inventory tab. The item is added as a new row with default weight (50).</li>
+                    <li><strong>Use cases:</strong> Track party loot, player inventories, NPC belongings, or quest items collected during your session.</li>
                 </ul>
                 
                 <h3>Weight Values</h3>
