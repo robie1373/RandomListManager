@@ -796,13 +796,14 @@ export const UI = {
     },
 
     parsePoolTag(tagsStr) {
-        // Parse pool=tabname::tabname::filtername format
+        // Parse pool=tabname::tabname::filtername format (case-insensitive)
         // Returns { targetTabs: [tab objects], filterTag: 'pool=filtername' } or null
         if (!tagsStr) return null;
         const tags = tagsStr.split(',').map(t => t.trim());
         for (const tag of tags) {
-            if (tag.startsWith('pool=')) {
-                const poolSpec = tag.substring(5); // Remove 'pool='
+            const lowerTag = tag.toLowerCase();
+            if (lowerTag.startsWith('pool=')) {
+                const poolSpec = lowerTag.substring(5); // Remove 'pool='
                 const parts = poolSpec.split('::');
                 if (parts.length < 2) continue; // Must have at least one tab and a filter
                 

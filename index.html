@@ -277,6 +277,19 @@
                     <li><strong>Persistence:</strong> The limit tag remains as "limit=0" even after it reaches zero, allowing you to see which items have been exhausted.</li>
                 </ul>
                 
+                <h3>Pool Tags (Cascading Rolls)</h3>
+                <ul>
+                    <li><strong>What it does:</strong> Roll on one table and automatically cascade rolls onto other tables based on a filter tag.</li>
+                    <li><strong>Syntax:</strong> Add a tag like "pool=TargetTab::AnotherTab::filtername" to any item.</li>
+                    <li><strong>How it works:</strong> When you roll an item with a pool tag, the system automatically searches the target tables for items matching the filter tag and randomly selects one. Results are appended to your roll.</li>
+                    <li><strong>Example:</strong> Create a Treasure tab with "Ancient Chest" tagged "pool=Loot::cursed". Create a Loot tab with items tagged "cursed" (like Gold Coins, Silver Chalice). Rolling Ancient Chest produces: "Ancient Chest with Gold Coins from Loot".</li>
+                    <li><strong>Multiple targets:</strong> Use multiple target tables like "pool=Loot::Encounters::Common" to cascade across several tables at once.</li>
+                    <li><strong>Filter matching:</strong> Target items must have the exact filter tag (e.g., "pool=cursed") in their tags to match. Just "cursed" alone won't match.</li>
+                    <li><strong>Case-insensitive:</strong> Tab names are matched case-insensitively, so "pool=loot" matches a "Loot" tab.</li>
+                    <li><strong>Silent skipping:</strong> If a target table has no matching items, it's simply skipped without error.</li>
+                    <li><strong>Weighted selection:</strong> Matching items are selected using the standard weighted randomization system, so items with higher weights are more likely to appear.</li>
+                </ul>
+                
                 <h3>Weight Values</h3>
                 <ul>
                     <li>Use weights to make rare encounters truly rare—a weight of 1 vs 100 creates significant probability differences.</li>

@@ -41,6 +41,8 @@ If you try to commit/push on `main`, a message will explain how to create a bran
 - **Pool Tags for Cascading Rolls**: Roll on one table and automatically cascade rolls onto other tables
   - Syntax: `pool=TargetTab::AnotherTab::filtername`
   - Supports multiple target tables (case-insensitive matching)
+  - Rows in target tables must have a tag of `pool=filtername` to match
+    - Just `filtername` will not match.
   - Results formatted as: `"Base Item with Match from TargetTab"`
   - Skip tables silently if no matching items found
   - Prevents recursion (pool tags in target results ignored)
@@ -175,11 +177,11 @@ Create a "Treasure" tab with an item:
 - Tags: `pool=Loot::Encounters::cursed`
 
 Create a "Loot" tab with items:
-- Name: `Gold Coins` | Tags: `cursed, common`
-- Name: `Silver Chalice` | Tags: `cursed, rare`
+- Name: `Gold Coins` | Tags: `pool=cursed, common`
+- Name: `Silver Chalice` | Tags: `pool=cursed, rare`
 
 Create an "Encounters" tab with items:
-- Name: `Angry Dragon` | Tags: `cursed`
+- Name: `Angry Dragon` | Tags: `pool=cursed`
 - Name: `Lost Merchant` | Tags: `neutral`
 
 Rolling "Ancient Chest" might produce:
