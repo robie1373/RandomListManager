@@ -926,16 +926,22 @@ export const UI = {
         promptMessage.innerText = message;
         promptPrimary.innerText = inventoryTabs[0].name;
         promptPrimary.onclick = () => {
-            this.addToInventory(inventoryTabs[0].id, resultText);
-            this.hidePrompt();
+            try {
+                this.addToInventory(inventoryTabs[0].id, resultText);
+            } finally {
+                this.hidePrompt();
+            }
         };
 
         if (inventoryTabs.length > 1) {
             promptSecondary.innerText = inventoryTabs[1].name;
             promptSecondary.style.display = 'block';
             promptSecondary.onclick = () => {
-                this.addToInventory(inventoryTabs[1].id, resultText);
-                this.hidePrompt();
+                try {
+                    this.addToInventory(inventoryTabs[1].id, resultText);
+                } finally {
+                    this.hidePrompt();
+                }
             };
         }
 
@@ -943,8 +949,11 @@ export const UI = {
         if (inventoryTabs.length > 2) {
             promptCancel.innerText = inventoryTabs[2].name;
             promptCancel.onclick = () => {
-                this.addToInventory(inventoryTabs[2].id, resultText);
-                this.hidePrompt();
+                try {
+                    this.addToInventory(inventoryTabs[2].id, resultText);
+                } finally {
+                    this.hidePrompt();
+                }
             };
         } else {
             promptCancel.innerText = 'Cancel';
@@ -979,6 +988,13 @@ export const UI = {
 
         // Show brief feedback (optional - could use a toast notification)
         console.log(`Added "${resultText}" to inventory tab ${tabId}`);
+    },
+
+    hidePrompt() {
+        const promptContainer = document.getElementById('promptContainer');
+        if (promptContainer && !promptContainer.classList.contains('hidden')) {
+            promptContainer.classList.add('hidden');
+        }
     },
 
     showLimitPrompt(item) {
