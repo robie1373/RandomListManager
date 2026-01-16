@@ -768,8 +768,9 @@ export const UI = {
                         capitalizedResult += ` with ${capitalizedPoolRoll} from ${targetTab.name}`;
                     }
                 }
-                // Append filter tag name at the end of cascade results
-                capitalizedResult += ` These are ${poolInfo.filterTag}`;
+                // Append filter tag name at the end of cascade results (without leading 'pool=')
+                const filterNameForDisplay = (poolInfo.filterTag || '').replace(/^pool=/i, '');
+                capitalizedResult += ` These are ${filterNameForDisplay}`;
             }
             
             // Apply clean results formatting if enabled
