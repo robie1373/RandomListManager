@@ -320,3 +320,10 @@ describe('parseDice cleanResults with references', () => {
         expect(result2).toBe("Sword");
     });
 });
+
+describe('failing test', () => {
+    it('should fail', () => {
+        expect(1).toEqual(2);
+    });
+
+});
