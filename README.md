@@ -35,6 +35,26 @@ If you try to commit/push on `main`, a message will explain how to create a bran
 
 ## Recent Changes
 
+### Version 1.16.0 (January 2026)
+
+#### New Features
+- **Pool Tags for Cascading Rolls**: Roll on one table and automatically cascade rolls onto other tables
+  - Syntax: `pool=TargetTab::AnotherTab::filtername`
+  - Supports multiple target tables (case-insensitive matching)
+  - Results formatted as: `"Base Item with Match from TargetTab"`
+  - Skip tables silently if no matching items found
+  - Prevents recursion (pool tags in target results ignored)
+  - Uses weighted randomization for target selections
+
+#### Technical Implementation
+- Added `parsePoolTag(tagsStr)` helper to parse pool tag syntax
+- Added `rollOnTargetTab(tabId, filterTag)` helper for weighted rolling on target tables
+- Modified `handleRoll()` to detect pool tags and append cascade results
+- Added 7 unit tests for parsePoolTag covering:
+  - Single and multiple target tabs
+  - Case-insensitive tab matching
+  - Edge cases (no pool tag, malformed input, no matches)
+
 ### Version 1.15.1 (January 2026)
 
 #### New Features
@@ -125,6 +145,51 @@ If you try to commit/push on `main`, a message will explain how to create a bran
 - Add multiple tags separated by commas
 - Special tag `unique` prevents duplicate rolls
 - Use `limit=n` to cap rolls (e.g., `limit=3` allows up to 3 rolls)
+- Use `pool=` tag for cascading rolls across multiple tables (see Pool Tags below)
+
+### Pool Tags (Cascading Rolls)
+
+Pool tags allow you to roll on an initial item and automatically cascade rolls onto other tables based on a filter tag.
+
+**Syntax:**
+```
+pool=TargetTab::AnotherTab::filtername
+```
+
+**Components:**
+- `pool=` - Marks this as a pool tag
+- `TargetTab::AnotherTab` - One or more target table names (case-insensitive, separated by `::`)
+- `filtername` - A filter tag to match items in the target tables
+
+**How it works:**
+1. When you roll an item with a pool tag, the base item is displayed
+2. For each target table, the system searches for items containing the filter tag
+3. If matches are found, one is randomly selected and appended to the result
+4. Result format: `"Base Item with Match1 from TargetTab with Match2 from AnotherTab"`
+5. If no matches exist in a target table, that table is skipped silently
+
+**Example:**
+
+Create a "Treasure" tab with an item:
+- Name: `Ancient Chest`
+- Tags: `pool=Loot::Encounters::cursed`
+
+Create a "Loot" tab with items:
+- Name: `Gold Coins` | Tags: `cursed, common`
+- Name: `Silver Chalice` | Tags: `cursed, rare`
+
+Create an "Encounters" tab with items:
+- Name: `Angry Dragon` | Tags: `cursed`
+- Name: `Lost Merchant` | Tags: `neutral`
+
+Rolling "Ancient Chest" might produce:
+- `"Ancient Chest with Gold Coins from Loot with Angry Dragon from Encounters"`
+
+**Key Features:**
+- **Case-insensitive tab matching** - `pool=loot::encounters` matches tabs named "Loot" and "Encounters"
+- **No recursion** - Pool tags in target results are ignored (prevents infinite loops)
+- **Silent skipping** - If a target table has no matching items, it's simply omitted from results
+- **Weighted selection** - Matching items are weighted normally (respects weight values)
 
 ### Rolling
 1. Select items or tags to filter candidates

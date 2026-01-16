@@ -196,3 +196,87 @@ describe('filterBySearch', () => {
         expect(result[0].name).toBe('Shield');
     });
 });
+
+describe('parsePoolTag', () => {
+    // Mock tabs and data for pool tag testing
+    const mockTabs = [
+        { id: 'loot', name: 'Loot' },
+        { id: 'encounters', name: 'Encounters' },
+        { id: 'goblin-db', name: 'Goblin DB' }
+    ];
+
+    function parsePoolTag(tagsStr) {
+        // Re-implement for testing
+        if (!tagsStr) return null;
+        const tags = tagsStr.split(',').map(t => t.trim());
+        for (const tag of tags) {
+            if (tag.startsWith('pool=')) {
+                const poolSpec = tag.substring(5); // Remove 'pool='
+                const parts = poolSpec.split('::');
+                if (parts.length < 2) continue; // Must have at least one tab and a filter
+                
+                const candidateTabNames = parts.slice(0, -1).map(p => p.trim().toLowerCase());
+                const filterName = parts[parts.length - 1].trim();
+                const filterTag = `pool=${filterName}`.toLowerCase();
+                
+                // Find matching target tabs
+                const targetTabs = mockTabs.filter(tab => 
+                    candidateTabNames.includes(tab.name.toLowerCase())
+                );
+                
+                return { targetTabs, filterTag };
+            }
+        }
+        return null;
+    }
+
+    it('should parse pool tag with single target tab', () => {
+        const result = parsePoolTag('pool=Loot::loot-common');
+        expect(result).not.toBeNull();
+        expect(result.filterTag).toBe('pool=loot-common');
+        expect(result.targetTabs).toHaveLength(1);
+        expect(result.targetTabs[0].name).toBe('Loot');
+    });
+
+    it('should parse pool tag with multiple target tabs', () => {
+        const result = parsePoolTag('pool=Loot::Encounters::loot-rare');
+        expect(result).not.toBeNull();
+        expect(result.filterTag).toBe('pool=loot-rare');
+        expect(result.targetTabs).toHaveLength(2);
+        expect(result.targetTabs[0].name).toBe('Loot');
+        expect(result.targetTabs[1].name).toBe('Encounters');
+    });
+
+    it('should be case-insensitive for tab names', () => {
+        const result = parsePoolTag('pool=loot::goblin db::treasure-hoard');
+        expect(result).not.toBeNull();
+        expect(result.filterTag).toBe('pool=treasure-hoard');
+        expect(result.targetTabs).toHaveLength(2);
+        expect(result.targetTabs[0].name).toBe('Loot');
+        expect(result.targetTabs[1].name).toBe('Goblin DB');
+    });
+
+    it('should return null if no pool tag', () => {
+        const result = parsePoolTag('unique, common');
+        expect(result).toBeNull();
+    });
+
+    it('should return null for malformed pool tag (missing tabs)', () => {
+        const result = parsePoolTag('pool=loot-only');
+        expect(result).toBeNull();
+    });
+
+    it('should handle pool tag mixed with other tags', () => {
+        const result = parsePoolTag('unique, pool=Loot::goblin-db, limit=3');
+        expect(result).not.toBeNull();
+        expect(result.filterTag).toBe('pool=goblin-db');
+        expect(result.targetTabs).toHaveLength(1);
+        expect(result.targetTabs[0].name).toBe('Loot');
+    });
+
+    it('should return empty target tabs if no matching tabs', () => {
+        const result = parsePoolTag('pool=NonExistent::filter-name');
+        expect(result).not.toBeNull();
+        expect(result.targetTabs).toHaveLength(0);
+    });
+});

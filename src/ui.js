@@ -736,7 +736,19 @@ export const UI = {
         if (selectedItem) {
             const rawName = selectedItem.reference ? `${selectedItem.name} (${selectedItem.reference})` : selectedItem.name;
             const resultText = DiceEngine.parseDice(rawName);
-            const capitalizedResult = capitalizeWords(resultText);
+            let capitalizedResult = capitalizeWords(resultText);
+            
+            // Check for pool tag and append pool rolls
+            const poolInfo = this.parsePoolTag(selectedItem.tags || '');
+            if (poolInfo && poolInfo.targetTabs.length > 0) {
+                for (const targetTab of poolInfo.targetTabs) {
+                    const poolRoll = this.rollOnTargetTab(targetTab.id, poolInfo.filterTag);
+                    if (poolRoll) {
+                        const capitalizedPoolRoll = capitalizeWords(poolRoll);
+                        capitalizedResult += ` with ${capitalizedPoolRoll} from ${targetTab.name}`;
+                    }
+                }
+            }
             
             const resultEl = document.getElementById('result');
             resultEl.innerText = capitalizedResult;
@@ -781,6 +793,54 @@ export const UI = {
             }
         }
         return null;
+    },
+
+    parsePoolTag(tagsStr) {
+        // Parse pool=tabname::tabname::filtername format
+        // Returns { targetTabs: [tab objects], filterTag: 'pool=filtername' } or null
+        if (!tagsStr) return null;
+        const tags = tagsStr.split(',').map(t => t.trim());
+        for (const tag of tags) {
+            if (tag.startsWith('pool=')) {
+                const poolSpec = tag.substring(5); // Remove 'pool='
+                const parts = poolSpec.split('::');
+                if (parts.length < 2) continue; // Must have at least one tab and a filter
+                
+                const candidateTabNames = parts.slice(0, -1).map(p => p.trim().toLowerCase());
+                const filterName = parts[parts.length - 1].trim();
+                const filterTag = `pool=${filterName}`.toLowerCase();
+                
+                // Find matching target tabs
+                const targetTabs = tabs.filter(tab => 
+                    candidateTabNames.includes(tab.name.toLowerCase())
+                );
+                
+                return { targetTabs, filterTag };
+            }
+        }
+        return null;
+    },
+
+    rollOnTargetTab(tabId, filterTag) {
+        // Roll on a specific target tab filtered by filterTag
+        // filterTag is lowercased, e.g., 'pool=loot-db-goblin'
+        // Returns rolled item result or null if no match
+        const targetItems = data[tabId] || [];
+        if (!targetItems || targetItems.length === 0) return null;
+        
+        // Filter items: must contain filterTag in tags and have weight > 0
+        const eligible = targetItems.filter(item => {
+            const itemTags = (item.tags || '').toLowerCase();
+            return itemTags.includes(filterTag) && (item.weight || 0) > 0;
+        });
+        
+        if (eligible.length === 0) return null;
+        
+        const rolled = DiceEngine.pickWeightedItem(eligible);
+        if (!rolled) return null;
+        
+        const rawName = rolled.reference ? `${rolled.name} (${rolled.reference})` : rolled.name;
+        return DiceEngine.parseDice(rawName);
     },
 
     showLimitPrompt(item) {
