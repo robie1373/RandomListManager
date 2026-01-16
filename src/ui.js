@@ -240,10 +240,6 @@ export const UI = {
 
 
         // Export buttons
-        document.getElementById('exportCSV').addEventListener('click', () => {
-            this.exportData('csv');
-            this.hideTools();
-        });
         document.getElementById('exportJSON').addEventListener('click', () => {
             this.exportData('json');
             this.hideTools();
@@ -1380,11 +1376,9 @@ export const UI = {
             } else if (fieldName === 'tags') {
                 newValue = this.sanitizeString(newValue, MAX_FIELD_LENGTH);
                 if (!newValue) newValue = TAGS_DEFAULT;
-                newValue = this.preventCSVInjection(newValue);
             } else if (fieldName === 'reference') {
                 newValue = this.sanitizeString(newValue, MAX_FIELD_LENGTH);
                 if (!newValue) newValue = REFERENCE_DEFAULT;
-                newValue = this.preventCSVInjection(newValue);
             } else if (fieldName === 'name') {
                 newValue = this.sanitizeString(newValue, MAX_FIELD_LENGTH);
             }
@@ -1423,9 +1417,7 @@ export const UI = {
                 // Validate and set defaults with proper validation
                 newItem.name = this.sanitizeString(newItem.name, MAX_FIELD_LENGTH) || '';
                 newItem.tags = this.sanitizeString(newItem.tags, MAX_FIELD_LENGTH) || TAGS_DEFAULT;
-                newItem.tags = this.preventCSVInjection(newItem.tags);
                 newItem.reference = this.sanitizeString(newItem.reference, MAX_FIELD_LENGTH) || REFERENCE_DEFAULT;
-                newItem.reference = this.preventCSVInjection(newItem.reference);
                 newItem.weight = this.sanitizeWeight(newItem.weight);
                 
                 // Only create item if name is not empty or example text
@@ -1570,7 +1562,6 @@ export const UI = {
                 newValue = this.sanitizeString(newValue, MAX_FIELD_LENGTH);
             } else if (fieldName === 'fullName') {
                 newValue = this.sanitizeString(newValue, MAX_FIELD_LENGTH);
-                newValue = this.preventCSVInjection(newValue);
             }
             
             if (isExampleRow) {
@@ -1602,7 +1593,6 @@ export const UI = {
                 // Validate legend entry with proper field validation
                 newLegend.acronym = this.sanitizeString(newLegend.acronym, MAX_FIELD_LENGTH) || '';
                 newLegend.fullName = this.sanitizeString(newLegend.fullName, MAX_FIELD_LENGTH) || '';
-                newLegend.fullName = this.preventCSVInjection(newLegend.fullName);
                 
                 // Only create entry if acronym is not empty or example text
                 if (newLegend.acronym && !newLegend.acronym.includes('DBR')) {
@@ -1713,12 +1703,7 @@ export const UI = {
         const legends = legendData[currentTab] || [];
         const filenameBase = this.buildFilenameBase(tabName);
 
-        if (format === 'csv') {
-            const csv = this.convertToCSV(tableData);
-            const legendCsv = this.convertLegendToCSV(legends);
-            const combined = csv + '\n\nLegend\n' + legendCsv;
-            this.downloadFile(combined, `${filenameBase}.csv`, 'text/csv');
-        } else if (format === 'json') {
+        if (format === 'json') {
             const exportObj = {
                 items: tableData,
                 legend: legends
@@ -1749,51 +1734,6 @@ export const UI = {
             }
         }
         this.showMessage(`Exported ${tabs.length} tabs`);
-    },
-
-    convertToCSV(data) {
-        if (!data || data.length === 0) return '';
-        
-        const headers = ['name', 'tags', 'reference', 'weight'];
-        const csvRows = [];
-        
-        // Add header row
-        csvRows.push(headers.join(','));
-        
-        // Add data rows
-        data.forEach(item => {
-            const values = headers.map(header => {
-                const value = item[header] || '';
-                // Escape commas and quotes in CSV
-                const escaped = String(value).replace(/"/g, '""');
-                return `"${escaped}"`;
-            });
-            csvRows.push(values.join(','));
-        });
-        
-        return csvRows.join('\n');
-    },
-
-    convertLegendToCSV(legends) {
-        if (!legends || legends.length === 0) return '';
-        
-        const headers = ['acronym', 'fullName'];
-        const csvRows = [];
-        
-        // Add header row
-        csvRows.push(headers.join(','));
-        
-        // Add data rows
-        legends.forEach(legend => {
-            const values = headers.map(header => {
-                const value = legend[header] || '';
-                const escaped = String(value).replace(/"/g, '""');
-                return `"${escaped}"`;
-            });
-            csvRows.push(values.join(','));
-        });
-        
-        return csvRows.join('\n');
     },
 
     exportXLSX(data, legends, tabName) {
@@ -1883,16 +1823,6 @@ export const UI = {
         return Math.max(0, Math.min(100, parsed));
     },
 
-    preventCSVInjection(value) {
-        // Prevent formula injection in CSV: =, +, -, @
-        if (typeof value !== 'string') return value;
-        const trimmed = value.trim();
-        if (/^[=+\-@]/.test(trimmed)) {
-            return "'" + trimmed; // Prefix with single quote to prevent interpretation
-        }
-        return value;
-    },
-
     processNextImportFile() {
         if (importQueue.length === 0) {
             return;
@@ -1912,8 +1842,8 @@ export const UI = {
         const extension = file.name.split('.').pop().toLowerCase();
         
         // Validate file extension
-        if (!['json', 'csv', 'xlsx'].includes(extension)) {
-            this.showMessage('Unsupported file format. Use CSV, JSON, or XLSX.');
+        if (!['json', 'xlsx'].includes(extension)) {
+            this.showMessage('Unsupported file format. Use JSON or XLSX.');
             return;
         }
 
@@ -2112,7 +2042,6 @@ export const UI = {
             seen.add(key);
             let fullName = (legend.fullName || '').trim();
             fullName = this.sanitizeString(fullName, MAX_FIELD_LENGTH);
-            fullName = this.preventCSVInjection(fullName);
             result.push({
                 acronym,
                 fullName
@@ -2146,8 +2075,6 @@ export const UI = {
                 reference = this.sanitizeString(reference, MAX_FIELD_LENGTH);
                 if (!reference) {
                     reference = REFERENCE_DEFAULT;
-                } else {
-                    reference = this.preventCSVInjection(reference);
                 }
             }
             
@@ -2159,8 +2086,6 @@ export const UI = {
                 tags = this.sanitizeString(tags, MAX_FIELD_LENGTH);
                 if (!tags) {
                     tags = TAGS_DEFAULT;
-                } else {
-                    tags = this.preventCSVInjection(tags);
                 }
             }
             

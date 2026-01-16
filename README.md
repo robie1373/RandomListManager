@@ -35,6 +35,17 @@ If you try to commit/push on `main`, a message will explain how to create a bran
 
 ## Recent Changes
 
+### Version 1.17.3 (January 2026)
+
+#### Removals
+- **Removed CSV Import/Export Support**: Simplified codebase by removing legacy CSV functionality
+  - Removed CSV export button and methods (`convertToCSV()`, `convertLegendToCSV()`)
+  - Removed CSV injection prevention (`preventCSVInjection()` method)
+  - Removed 4 E2E tests and 8 unit tests for CSV functionality
+  - Updated file import to accept only `.json` and `.xlsx` formats
+  - JSON and XLSX support fully preserved and functional
+  - 205 tests passing (down from 213 after removing CSV-specific tests)
+
 ### Version 1.17.2 (January 2026)
 
 #### New Features

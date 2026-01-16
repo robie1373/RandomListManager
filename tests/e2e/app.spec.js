@@ -153,24 +153,6 @@ test.describe('Random List Manager E2E', () => {
             await expect(toolsMenu.locator('#exportAllTabs')).toBeVisible();
         });
 
-        test('should export current tab using tab name in filename', async ({ page }) => {
-            const itemsTab = page.locator('#tab-items');
-            await itemsTab.dblclick();
-            const editInput = page.locator('.tab-name-edit');
-            await editInput.fill('Loot Drops!');
-            await editInput.press('Enter');
-
-            await addItemViaExampleRow(page, 'Export Test Item');
-
-            await page.locator('#toolsBtn').click();
-            const [download] = await Promise.all([
-                page.waitForEvent('download'),
-                page.locator('#exportCSV').click()
-            ]);
-
-            expect(download.suggestedFilename()).toBe('Loot_Drops.csv');
-        });
-
         test('should export all tabs using tab names in filenames', async ({ page }) => {
             const weaponsTab = page.locator('#tab-weapons');
             await weaponsTab.dblclick();
@@ -1049,39 +1031,6 @@ test.describe('Random List Manager E2E', () => {
         await expect(row.locator('td[data-field="weight"]')).toContainText('75');
     });
 
-    test('should import CSV file and show filename as tab name in header', async ({ page }) => {
-        // Create test CSV file
-        const csvContent = `name,tags,reference,weight
-Ale,drink,p.12,30
-Mead,drink,p.13,40
-Wine,drink,p.14,20`;
-        
-        const csvPath = path.join(__dirname, '../..', 'test-booze.csv');
-        fs.writeFileSync(csvPath, csvContent);
-        
-        try {
-            // Set the file input and trigger import (no need to open menu)
-            const fileInput = page.locator('#importFileInput');
-            await fileInput.setInputFiles(csvPath);
-            
-            // Wait for import to complete and tab to be created
-            await page.waitForSelector('[data-tab^="tab_"]:has-text("test-booze")', { timeout: 10000 });
-            
-            // Verify tab name is shown in active tab button
-            await expect(page.locator('.tab-btn.active')).toHaveText('test-booze');
-            
-            // Verify data was imported
-            await expect(page.locator('td:has-text("Ale")')).toBeVisible();
-            await expect(page.locator('td:has-text("Mead")')).toBeVisible();
-            await expect(page.locator('td:has-text("Wine")')).toBeVisible();
-        } finally {
-            // Clean up
-            if (fs.existsSync(csvPath)) {
-                fs.unlinkSync(csvPath);
-            }
-        }
-    });
-
     test('should import XLSX file and show filename as tab name in header', async ({ page }) => {
         // Create test XLSX file
         const data = [
@@ -1339,57 +1288,6 @@ Wine,drink,p.14,20`;
         
         // App should remain functional after import
         await expect(page.locator('#tableBody')).toBeVisible();
-    });
-
-    test('should handle CSV with quoted values and legend section', async ({ page }) => {
-        // Create a CSV with quoted values containing commas and a legend section
-        const csvContent = `name,tags,reference,weight
-"Item 1","tag1, tag2","p.10",50
-"Item 2","tag3, tag4","p.20",75
-
-Legend
-acronym,fullName
-"XYZ","Test Value"
-"ABC","Another Test"`;
-        
-        const csvPath = path.join(__dirname, '../..', 'quoted-legend-test.csv');
-        fs.writeFileSync(csvPath, csvContent);
-        
-        try {
-            const fileInput = page.locator('#importFileInput');
-            await fileInput.setInputFiles(csvPath);
-            
-            // Wait for the tab to appear
-            await page.waitForSelector('[data-tab^="tab_"]:has-text("quoted-legend-test")', { timeout: 10000 });
-            
-            // Verify items are in main table
-            await expect(page.locator('#tableBody').locator('td:has-text("Item 1")')).toBeVisible();
-            await expect(page.locator('#tableBody').locator('td:has-text("Item 2")')).toBeVisible();
-            
-            // Verify legend entries are in legend table by checking specific cells
-            const legendTable = page.locator('.legend-table');
-            
-            // Check that legend rows exist by counting non-example rows
-            const legendDataRows = legendTable.locator('tbody tr:not(.example-row)');
-            await expect(legendDataRows).toHaveCount(2); // XYZ and ABC
-            
-            // Check first legend acronym cell
-            const xyzCell = legendTable.locator('td[data-field="acronym"]').filter({ hasText: 'XYZ' });
-            await expect(xyzCell).toHaveCount(1);
-            
-            // Check second legend acronym cell
-            const abcCell = legendTable.locator('td[data-field="acronym"]').filter({ hasText: 'ABC' });
-            await expect(abcCell).toHaveCount(1);
-            
-            // Verify legend acronyms are NOT in items table
-            const itemsTable = page.locator('#tableBody');
-            const xyzInItems = itemsTable.locator('td:has-text("XYZ")');
-            await expect(xyzInItems).toHaveCount(0);
-        } finally {
-            if (fs.existsSync(csvPath)) {
-                fs.unlinkSync(csvPath);
-            }
-        }
     });
 
     test('CSV export-import preserves legend data structure', async ({ page }) => {
@@ -1806,21 +1704,6 @@ acronym,fullName
     /* ============================================
        EXPORT CONTENT VALIDATION TESTS
        ============================================ */
-
-    test('should export CSV with correct format and headers', async ({ page }) => {
-        // Add an item
-        await addItemViaExampleRow(page, 'Test Sword');
-        
-        // Export CSV
-        await page.locator('#toolsBtn').click();
-        const [download] = await Promise.all([
-            page.waitForEvent('download'),
-            page.locator('#exportCSV').click()
-        ]);
-        
-        // Verify file properties
-        expect(download.suggestedFilename()).toContain('.csv');
-    });
 
     test('should export JSON with valid structure', async ({ page }) => {
         // Add an item

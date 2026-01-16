@@ -99,33 +99,6 @@ describe('sanitizeWeight', () => {
     });
 });
 
-describe('preventCSVInjection', () => {
-    it('should prefix formula characters with single quote', () => {
-        expect(preventCSVInjection('=SUM(A1:A10)')).toBe("'=SUM(A1:A10)");
-        expect(preventCSVInjection('+1000')).toBe("'+1000");
-        expect(preventCSVInjection('-500')).toBe("'-500");
-        expect(preventCSVInjection('@attacker')).toBe("'@attacker");
-    });
-
-    it('should not modify normal text', () => {
-        expect(preventCSVInjection('normal text')).toBe('normal text');
-        expect(preventCSVInjection('item 123')).toBe('item 123');
-        // Formula text should be prefixed with single quote
-        expect(preventCSVInjection('=formula text')).toBe("'=formula text");
-    });
-
-    it('should handle whitespace before formula characters', () => {
-        expect(preventCSVInjection('  =formula')).toBe("'=formula");
-        expect(preventCSVInjection('\t+value')).toBe("'+value");
-    });
-
-    it('should not modify non-string input', () => {
-        expect(preventCSVInjection(null)).toBe(null);
-        expect(preventCSVInjection(undefined)).toBe(undefined);
-        expect(preventCSVInjection(123)).toBe(123);
-    });
-});
-
 describe('filterBySearch', () => {
     const testItems = [
         { name: 'Sword', tags: 'weapon, sharp', reference: 'DBR 10' },
