@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { DiceEngine } from '../../src/logic.js';
 
 // Re-implement sanitization functions for testing
 function sanitizeString(value, maxLength) {
@@ -278,5 +279,44 @@ describe('parsePoolTag', () => {
         const result = parsePoolTag('pool=NonExistent::filter-name');
         expect(result).not.toBeNull();
         expect(result.targetTabs).toHaveLength(0);
+    });
+});
+
+describe('parseDice cleanResults with references', () => {
+    it('should omit dice notation when cleanResults is true', () => {
+        const result = DiceEngine.parseDice("Sword 1d1+5", true);
+        expect(result).toMatch(/^Sword \d+$/);
+        expect(result).not.toContain("(");
+    });
+
+    it('should include dice notation when cleanResults is false', () => {
+        const result = DiceEngine.parseDice("Sword 1d1+5", false);
+        expect(result).toMatch(/Sword \d+ \(1d1\+5\)/);
+    });
+
+    it('should omit dice notation but keep text when cleanResults is true', () => {
+        const result = DiceEngine.parseDice("Sword 2d4", true);
+        expect(result).toMatch(/^Sword \d+$/);
+        expect(result).not.toContain("(");
+        expect(result).not.toContain(")");
+    });
+
+    it('should include both dice notation and surrounding text when cleanResults is false', () => {
+        const result = DiceEngine.parseDice("Sword 2d4 item", false);
+        expect(result).toMatch(/Sword \d+ \(2d4\) item/);
+    });
+
+    it('should handle item with just dice when cleanResults is true', () => {
+        const result = DiceEngine.parseDice("1d1+5", true);
+        expect(result).toMatch(/^\d+$/);
+        expect(result).not.toContain("(");
+    });
+
+    it('should handle no dice expressions with cleanResults', () => {
+        const result = DiceEngine.parseDice("Sword", true);
+        expect(result).toBe("Sword");
+        
+        const result2 = DiceEngine.parseDice("Sword", false);
+        expect(result2).toBe("Sword");
     });
 });
