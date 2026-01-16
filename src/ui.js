@@ -1158,7 +1158,7 @@ export const UI = {
                 <td class="checkbox-cell"></td>
                 <td class="editable" data-field="name">Example ${tabLabel}</td>
                 <td class="editable" data-field="tags">Treasure, Cave</td>
-                <td class="editable" data-field="reference">Reference</td>
+                <td class="editable" data-field="reference">NoRef</td>
                 <td class="editable" data-field="weight">50</td>
                 <td><button class="btn-delete" disabled>×</button></td>
             </tr>
@@ -1334,20 +1334,25 @@ export const UI = {
         const fieldName = cell.getAttribute('data-field');
         const originalValue = cell.innerText;
         const isExampleRow = row.classList.contains('example-row');
-        
+
         let item = null;
         if (!isExampleRow) {
             const itemIndex = parseInt(row.getAttribute('data-item-index'));
             item = data[currentTab][itemIndex];
             if (!item) return;
         }
-        
+
         // Create input field
         const input = document.createElement('input');
         input.type = fieldName === 'weight' ? 'number' : 'text';
-        input.value = originalValue;
+        // If editing the example row's tags or reference cell, clear the value
+        if (isExampleRow && (fieldName === 'tags' || fieldName === 'reference')) {
+            input.value = '';
+        } else {
+            input.value = originalValue;
+        }
         input.className = 'cell-input';
-        
+
         if (fieldName === 'weight') {
             input.min = '0';
             input.max = '100';
