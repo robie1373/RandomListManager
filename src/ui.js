@@ -981,6 +981,13 @@ export const UI = {
         console.log(`Added "${resultText}" to inventory tab ${tabId}`);
     },
 
+    hidePrompt() {
+        const promptContainer = document.getElementById('promptContainer');
+        if (promptContainer && !promptContainer.classList.contains('hidden')) {
+            promptContainer.classList.add('hidden');
+        }
+    },
+
     showLimitPrompt(item) {
         pendingLimitItem = item;
         const promptEl = document.getElementById('limitPrompt');
