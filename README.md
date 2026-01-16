@@ -15,6 +15,24 @@ A lightweight, offline-capable web application for managing random encounter tab
 - **Progressive Web App**: Works offline with service worker support
 - **Dark/Light Theme**: Automatic theme detection based on system preferences
 
+## Branching Policy (enforced)
+
+- Do not commit or push on `main` or `master`. Local git hooks block commits and pushes from protected branches.
+- Create a feature branch for any change: `git checkout -b <feature-name>`
+- After work is complete, open a PR and merge via review.
+
+Quick start:
+
+```
+git checkout -b feature/your-change
+# make edits
+git add -A
+git commit -m "feat: describe your change"
+git push -u origin feature/your-change
+```
+
+If you try to commit/push on `main`, a message will explain how to create a branch.
+
 ## Recent Changes
 
 ### Version 1.15.1 (January 2026)
