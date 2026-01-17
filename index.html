@@ -282,6 +282,7 @@
                     <li><strong>What it does:</strong> Add the "unique" tag to any item you want to roll only once in a session.</li>
                     <li><strong>How it works:</strong> When you roll an item with the "unique" tag, you'll be prompted to set its weight to zero, preventing it from being rolled again.</li>
                     <li><strong>Example:</strong> Use this for boss encounters, special treasures, or story-critical NPCs that should only appear once.</li>
+                    <li><strong>Resetting:</strong> The unique item can be reset by manually setting its weight back to a number between 1 and 100 in the table.</li>
                 </ul>
                 
                 <h3>Limit Tag (limit=n)</h3>
@@ -291,6 +292,7 @@
                     <li><strong>Example:</strong> Use "limit=3" for consumable items (potions, arrows) that can only be rolled 3 times before running out. Add "limit=5" for encounters that can occur up to 5 times.</li>
                     <li><strong>Filtering:</strong> Click the "limit" tag in the tag cloud to filter and show only items that have active limits.</li>
                     <li><strong>Persistence:</strong> The limit tag remains as "limit=0" even after it reaches zero, allowing you to see which items have been exhausted.</li>
+                    <li><strong>Resetting:</strong> The limited item can be refreshed by manually editing the limit=0 to limit=some-positive-number <strong>AND</strong> resetting the weight to a number between 1 and 100 in the table.</li>
                 </ul>
                 
                 <h3>Pool Tags (Cascading Rolls)</h3>

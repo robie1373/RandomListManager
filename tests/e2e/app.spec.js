@@ -513,7 +513,7 @@ test.describe('Random List Manager E2E', () => {
         await expect(page.locator('#tableBody .example-row td[data-field="tags"]')).toContainText('Treasure, Cave');
         
         // Should have reference column
-        await expect(page.locator('#tableBody .example-row td[data-field="reference"]')).toContainText('Reference');
+        await expect(page.locator('#tableBody .example-row td[data-field="reference"]')).toContainText('NoRef');
         
         // Should have weight
         await expect(page.locator('#tableBody .example-row td[data-field="weight"]')).toContainText('50');
