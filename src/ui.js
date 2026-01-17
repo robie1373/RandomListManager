@@ -28,6 +28,22 @@ let pendingUniqueItem = null; // Track the last rolled unique item
 let pendingLimitItem = null; // Track the last rolled limit item
 let importQueue = []; // Queue of files to import sequentially
 
+// DOM cache for frequently accessed elements
+const domCache = {
+    elements: {},
+    get(id) {
+        // Always refresh - don't cache for elements that might be recreated
+        return document.getElementById(id);
+    },
+    query(selector) {
+        // Always refresh - don't cache for elements that might be recreated
+        return document.querySelector(selector);
+    },
+    clear() {
+        this.elements = {};
+    }
+};
+
 // Initialize tabs structure
 let tabs = JSON.parse(localStorage.getItem(TABS_KEY)) || [
     { id: 'items', name: 'Items' },
@@ -51,10 +67,37 @@ function capitalizeWords(text) {
     ).join(' ');
 }
 
+// Debounce function for search optimization
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// Deferred save queue for localStorage optimization
+const saveQueue = new Map();
+let saveScheduled = false;
+
+function flushSaveQueue() {
+    saveQueue.forEach((value, key) => {
+        localStorage.setItem(key, value);
+    });
+    saveQueue.clear();
+    saveScheduled = false;
+}
+
 // --- Core UI Functions ---
 
 export const UI = {
     init() {
+        // Clear cache to ensure fresh element lookups
+        domCache.clear();
         this.renderTabs();
         this.bindEvents();
         this.switchTab(tabs[0].id); // This calls renderTagCloud and renderList
@@ -367,14 +410,18 @@ export const UI = {
             });
         });
 
-        // Search input
+        // Search input with debouncing for performance
         const searchInput = document.getElementById('searchInput');
         if (searchInput) {
-            searchInput.addEventListener('input', (e) => {
-                searchTerm = e.target.value.toLowerCase().trim();
+            const debouncedSearch = debounce((searchValue) => {
+                searchTerm = searchValue.toLowerCase().trim();
                 console.log('Search term updated:', searchTerm);
                 this.renderTagCloud();
                 this.renderList();
+            }, 150); // 150ms delay
+            
+            searchInput.addEventListener('input', (e) => {
+                debouncedSearch(e.target.value);
             });
         } else {
             console.warn('Search input element not found');
@@ -397,6 +444,19 @@ export const UI = {
         document.getElementById('bulkEditCancel').addEventListener('click', () => {
             this.clearSelection();
         });
+        
+        // Event delegation for tag cloud buttons
+        const tagCloud = domCache.get('tagCloud');
+        if (tagCloud) {
+            tagCloud.addEventListener('click', (e) => {
+                if (e.target.classList.contains('tag-btn')) {
+                    const tag = e.target.dataset.tag;
+                    if (tag) {
+                        this.toggleTag(tag);
+                    }
+                }
+            });
+        }
     },
 
     switchTab(tab) {
@@ -404,7 +464,7 @@ export const UI = {
         
         // Clear search when switching tabs
         searchTerm = '';
-        const searchInput = document.getElementById('searchInput');
+        const searchInput = domCache.get('searchInput');
         if (searchInput) {
             searchInput.value = '';
         }
@@ -418,14 +478,14 @@ export const UI = {
         // Update the table header name
         const currentTabObj = tabs.find(t => t.id === tab);
         const tabName = currentTabObj ? currentTabObj.name : tab;
-        const tableNameHeader = document.getElementById('tableNameHeader');
+        const tableNameHeader = domCache.get('tableNameHeader');
         if (tableNameHeader) {
             tableNameHeader.textContent = tabName;
         }
         
         // Restore roll result for this tab
-        const resultDiv = document.getElementById('result');
-        const copyBtn = document.getElementById('copyBtn');
+        const resultDiv = domCache.get('result');
+        const copyBtn = domCache.get('copyBtn');
         if (resultDiv) {
             const savedResult = rollResults[tab];
             if (savedResult) {
@@ -676,7 +736,7 @@ export const UI = {
                     tagBtn.classList.add('selected');
                 }
                 
-                tagBtn.addEventListener('click', () => this.toggleTag(lowerTag));
+                // Event delegation handles click - no listener needed here
                 tagsContainer.appendChild(tagBtn);
             });
             
@@ -712,7 +772,7 @@ export const UI = {
                     refBtn.classList.add('selected');
                 }
                 
-                refBtn.addEventListener('click', () => this.toggleTag(lowerRef));
+                // Event delegation handles click - no listener needed here
                 referencesContainer.appendChild(refBtn);
             });
             
@@ -1127,53 +1187,72 @@ export const UI = {
     },
 
     renderList() {
-        const body = document.getElementById('tableBody');
+        const body = domCache.get('tableBody');
+        if (!body) return;
+        
         const allItems = data[currentTab];
         const filtered = this.getFilteredList();
-        const nameHeader = document.getElementById('tableNameHeader');
+        const nameHeader = domCache.get('tableNameHeader');
         
         // Update header to reflect current tab name
         const currentTabObj = tabs.find(t => t.id === currentTab);
         const tabLabel = currentTabObj ? currentTabObj.name.replace(/s$/, '') : 'Item';
-        nameHeader.textContent = tabLabel;
+        if (nameHeader) nameHeader.textContent = tabLabel;
         
         // Always use filtered list (which includes both search and tag filtering)
         const itemsToShow = filtered;
-        const itemsHTML = itemsToShow.map((item) => {
+        
+        // Use DocumentFragment for better performance
+        const fragment = document.createDocumentFragment();
+        
+        itemsToShow.forEach((item) => {
             const originalIndex = allItems.indexOf(item);
             const isSelected = selectedRows.has(originalIndex);
-            return `
-            <tr data-item-index="${originalIndex}" class="${isSelected ? 'selected-row' : ''}">
+            const tr = document.createElement('tr');
+            tr.setAttribute('data-item-index', originalIndex);
+            if (isSelected) tr.className = 'selected-row';
+            
+            tr.innerHTML = `
                 <td class="checkbox-cell"><input type="checkbox" class="row-checkbox" ${isSelected ? 'checked' : ''}></td>
                 <td class="editable" data-field="name">${capitalizeWords(item.name)}</td>
                 <td class="editable" data-field="tags">${capitalizeWords(item.tags || '')}</td>
                 <td class="editable" data-field="reference">${(item.reference || '').toUpperCase()}</td>
                 <td class="editable" data-field="weight">${Number.isFinite(item.weight) ? item.weight : 0}</td>
                 <td><button class="btn-delete" data-index="${originalIndex}">×</button></td>
-            </tr>
-        `}).join('');
+            `;
+            fragment.appendChild(tr);
+        });
         
-        const exampleRowHTML = `
-            <tr class="example-row">
-                <td class="checkbox-cell"></td>
-                <td class="editable" data-field="name">Example ${tabLabel}</td>
-                <td class="editable" data-field="tags">Treasure, Cave</td>
-                <td class="editable" data-field="reference">NoRef</td>
-                <td class="editable" data-field="weight">50</td>
-                <td><button class="btn-delete" disabled>×</button></td>
-            </tr>
+        // Add example row
+        const exampleRow = document.createElement('tr');
+        exampleRow.className = 'example-row';
+        exampleRow.innerHTML = `
+            <td class="checkbox-cell"></td>
+            <td class="editable" data-field="name">Example ${tabLabel}</td>
+            <td class="editable" data-field="tags">Treasure, Cave</td>
+            <td class="editable" data-field="reference">NoRef</td>
+            <td class="editable" data-field="weight">50</td>
+            <td><button class="btn-delete" disabled>×</button></td>
         `;
+        fragment.appendChild(exampleRow);
         
-        body.innerHTML = itemsHTML + exampleRowHTML;
+        // Clear and append in one operation - only clear what was there before
+        while (body.firstChild) {
+            body.removeChild(body.firstChild);
+        }
+        body.appendChild(fragment);
 
-        localStorage.setItem(STORAGE_KEY + currentTab, JSON.stringify(data[currentTab]));
+        // Defer localStorage write if possible
+        this.saveDataDeferred(currentTab);
         
         // Render legend table
         this.renderLegend();
     },
 
     renderLegend() {
-        const body = document.getElementById('legendTableBody');
+        const body = domCache.get('legendTableBody');
+        if (!body) return;
+        
         const legends = legendData[currentTab] || [];
         
         const legendsHTML = legends.map((legend, index) => {
@@ -1195,7 +1274,7 @@ export const UI = {
         
         body.innerHTML = legendsHTML + exampleRowHTML;
 
-        localStorage.setItem(STORAGE_KEY + 'legend_' + currentTab, JSON.stringify(legendData[currentTab]));
+        this.saveLegendDeferred(currentTab);
     },
 
     addItem() {
@@ -2267,6 +2346,38 @@ export const UI = {
         const modal = document.getElementById('toolsMenu');
         if (modal) {
             modal.classList.add('hidden');
+        }
+    },
+    
+    // Deferred localStorage save for better performance
+    saveDataDeferred(tab) {
+        const key = STORAGE_KEY + tab;
+        const value = JSON.stringify(data[tab]);
+        saveQueue.set(key, value);
+        
+        if (!saveScheduled) {
+            saveScheduled = true;
+            // Use requestIdleCallback if available, otherwise setTimeout
+            if (typeof requestIdleCallback !== 'undefined') {
+                requestIdleCallback(flushSaveQueue, { timeout: 500 });
+            } else {
+                setTimeout(flushSaveQueue, 100);
+            }
+        }
+    },
+    
+    saveLegendDeferred(tab) {
+        const key = STORAGE_KEY + 'legend_' + tab;
+        const value = JSON.stringify(legendData[tab]);
+        saveQueue.set(key, value);
+        
+        if (!saveScheduled) {
+            saveScheduled = true;
+            if (typeof requestIdleCallback !== 'undefined') {
+                requestIdleCallback(flushSaveQueue, { timeout: 500 });
+            } else {
+                setTimeout(flushSaveQueue, 100);
+            }
         }
     }
 };

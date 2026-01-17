@@ -1,0 +1,9 @@
+{
+  "recommendations": [
+    "dbaeumer.vscode-eslint",
+    "ms-playwright.playwright",
+    "ritwickdey.LiveServer",
+    "ryanluker.vscode-coverage-gutters",
+    "vitest.vitest"
+  ]
+}

@@ -95,17 +95,23 @@ export const UIUtils = {
     },
 
     /**
-     * Filter items by tags with OR/AND logic
+     * Filter items by tags with OR/AND logic (optimized)
      */
     filterItems: (items, selectedTags, filterLogic = 'OR') => {
         if (!items || items.length === 0) return [];
         if (!selectedTags || selectedTags.size === 0) return items;
 
-        const tagSet = typeof selectedTags === 'string' ? new Set(selectedTags.split(',')) : selectedTags;
+        // Convert selectedTags to Set if it's a string
+        const tagSet = typeof selectedTags === 'string' 
+            ? new Set(selectedTags.split(',').map(t => t.trim())) 
+            : selectedTags;
+        
+        // Convert to lowercase array once
+        const activeFilters = Array.from(tagSet).map(t => t.toString().toLowerCase());
         
         return items.filter(item => {
+            // Split and normalize tags once per item
             const itemTags = (item.tags || "").toLowerCase().split(',').map(t => t.trim());
-            const activeFilters = Array.from(tagSet).map(t => t.toString().toLowerCase());
             
             return filterLogic === 'OR' 
                 ? activeFilters.some(ft => itemTags.includes(ft)) 
